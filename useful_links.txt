@@ -1,2 +1,3 @@
-- Adversarial Discriminative Domain Adaptation
-https://arxiv.org/pdf/1702.05464.pdf
+- Adversarial Discriminative Domain Adaptation: https://arxiv.org/pdf/1702.05464.pdf
+- PyTorch datasets: https://pytorch.org/vision/stable/datasets.html
+- TensorFlow: https://www.tensorflow.org/datasets/catalog/overview#all_datasets
