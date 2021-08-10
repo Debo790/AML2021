@@ -1,0 +1,2 @@
+- Adversarial Discriminative Domain Adaptation
+https://arxiv.org/pdf/1702.05464.pdf
