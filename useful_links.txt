@@ -2,7 +2,7 @@
 - PyTorch datasets: https://pytorch.org/vision/stable/datasets.html
 - TensorFlow: https://www.tensorflow.org/datasets/catalog/overview#all_datasets
 
-Here we have some implementantions:
+Here we have some implementations:
 - https://github.com/erictzeng/adda
 - https://www.kaggle.com/balraj98/adversarial-discriminative-domain-adaptation/notebook
 - https://github.com/corenel/pytorch-adda
