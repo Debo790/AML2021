@@ -47,9 +47,26 @@ class Phase1Solver:
         """
         supervised_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-        # Here we could use different optimizers; e.g.: stochastic gradient descent, etc.
-        # Adam is an adaptive stochastic gradient descent.
-        optimizer = tf.keras.optimizers.Adam(learning_rate=self.initial_learning_rate)
+        """
+        Defining the type of schedule for the learning rate decay:
+            https://www.tensorflow.org/api_docs/python/tf/keras/optimizers/schedules/ExponentialDecay
+
+        This function is going to manage the exponential decay by itself; we just need to pass an initial learning rate,
+        also defining after how many steps/iterations the learning rate have to decay (decay_steps=250).
+        staircase=True means that the learning rate remains steady until an incremental decay_step is reached  
+        (the learning rate it's multiplied by 0.96 every decay_step: 25o, 500, 750, etc.).
+        
+        More generally, this is an optimization effective option: a higher initial learning rate means that the 
+        optimization process will quickly move towards the local minimum. Then, subsequently, a smaller learning rate
+        will be able to get closer.
+        """
+        lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+            self.initial_learning_rate,
+            decay_steps=250,
+            decay_rate=0.96,
+            staircase=True)
+        # Defining the optimizer using the scheduler above
+        optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
 
         @tf.function
         # data and labels: batches of 32 elements
@@ -89,7 +106,7 @@ class Phase1Solver:
         global_step = 0
         best_accuracy = 0.0
 
-        # External for loop: one for each epoch.
+        # External for loop: one iteration for each epoch.
         for e in range(self.epochs):
 
             """
@@ -107,12 +124,12 @@ class Phase1Solver:
             training_labels = training_labels[perm]
 
             # Iteration
-            # For each batch size step; it will be: 0, 31, 63, ..
+            # For each batch size step (0, 31, 63, ..)
             for i in range(0, len(training_labels), self.batch_size):
                 # Here we're slicing the data and the labels.
                 data = training_data[i:i + self.batch_size, :]
                 labels = training_labels[i:i + self.batch_size, ].astype('int64')
-                global_step += 1 # len(labels)
+                global_step += 1
 
                 # Invoke the inner function train_step()
                 batch_loss, batch_accuracy = train_step(data, labels)
@@ -123,9 +140,32 @@ class Phase1Solver:
                         e + 1, global_step,
                         batch_loss.numpy(),
                         batch_accuracy.numpy()))
+
+                    # Updating the learning rate accord accordingly with the optimizer criteria
+                    lr = optimizer._decayed_lr(tf.float32).numpy()
+
                 if global_step == 1:
                     print('number of model parameters {}'.format(model.count_params()))
 
+            """
+            TEST phase
+            Perform test on test set to evaluate the method on unseen data
+            """
+            loss, test_accuracy, test_preds = self.test(test_data, test_labels, model, supervised_loss)
+
+            # Save the model if the results are better than the previous trained model.
+            if test_accuracy > best_accuracy:
+                best_accuracy = test_accuracy
+                model.save(MODEL_PATH)
+
+            print(
+                'End of Epoch {0}/{1:03} -> loss: {2:0.05}, test accuracy: {3:0.03} - best accuracy: {4:0.03}'.format(
+                    e + 1, self.epochs,
+                    loss.numpy(),
+                    test_accuracy.numpy(),
+                    best_accuracy))
+
+            """
             # Test the whole test dataset
             # This test phase is performed at the end of each epoch.
             test_preds = tf.zeros((0,), dtype=tf.int64)
@@ -151,6 +191,7 @@ class Phase1Solver:
                     loss.numpy(),
                     test_accuracy.numpy(),
                     best_accuracy))
+            """
 
     def test(self, test_data, test_labels, model, loss_func):
 
