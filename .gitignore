@@ -130,3 +130,4 @@ dmypy.json
 
 # Stefano's additional files
 INFO
+wandb/

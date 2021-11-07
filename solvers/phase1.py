@@ -2,9 +2,10 @@ import tensorflow as tf
 import random
 import numpy as np
 import os
+import wandb
 
 """
-The implementation is very similar to the one presented during Lab5 Rota's lesson.
+The implementation is very similar to the ones presented during Lab5/Lab6 Rota's lesson.
 Inside you'll find some useful remarks, in order to better understand the computation flow.
 """
 
@@ -144,6 +145,12 @@ class Phase1Solver:
                     # Updating the learning rate accord accordingly with the optimizer criteria
                     lr = optimizer._decayed_lr(tf.float32).numpy()
 
+                    wandb.log(
+                        {'train/batch_loss': batch_loss,
+                         'train/batch_accuracy': batch_accuracy,
+                         'train/learning_rate': lr
+                         })
+
                 if global_step == 1:
                     print('number of model parameters {}'.format(model.count_params()))
 
@@ -165,33 +172,11 @@ class Phase1Solver:
                     test_accuracy.numpy(),
                     best_accuracy))
 
-            """
-            # Test the whole test dataset
-            # This test phase is performed at the end of each epoch.
-            test_preds = tf.zeros((0,), dtype=tf.int64)
-            total_loss = list()
-            for i in range(0, len(test_labels), self.batch_size):
-                data = test_data[i:i + self.batch_size, :]
-                labels = test_labels[i:i + self.batch_size, ].astype('int64')
-                batch_loss, _, preds = test_step(data, labels)
-                batch_preds = tf.argmax(preds, -1)
-                test_preds = tf.concat([test_preds, batch_preds], axis=0)
-                total_loss.append(batch_loss)
-            loss = sum(total_loss) / len(total_loss)
-            eq = tf.equal(test_labels, test_preds)
-            test_accuracy = tf.reduce_mean(tf.cast(eq, tf.float32)) * 100
-
-            # Save the model if the results are better than the previous trained model.
-            if test_accuracy > best_accuracy:
-                best_accuracy = test_accuracy
-                model.save(MODEL_PATH)
-            print(
-                'End of Epoch {0}/{1:03} -> loss: {2:0.05}, test accuracy: {3:0.03} - best accuracy: {4:0.03}'.format(
-                    e + 1, self.epochs,
-                    loss.numpy(),
-                    test_accuracy.numpy(),
-                    best_accuracy))
-            """
+            wandb.log(
+                {'test/loss': loss,
+                 'test/accuracy': test_accuracy,
+                 'test/best_accuracy': best_accuracy,
+                 'epoch': e+1})
 
     def test(self, test_data, test_labels, model, loss_func):
 
