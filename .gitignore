@@ -131,3 +131,4 @@ dmypy.json
 # Stefano's additional files
 INFO
 wandb/
+wandb_settings.py
