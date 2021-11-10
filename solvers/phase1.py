@@ -40,9 +40,10 @@ class Phase1Solver:
 
     def train(self, training_data, training_labels, test_data, test_labels, model):
         """
-        In image classification, one of most appropriate loss function is "sparse categorical cross entropy".
-        Roughly, it means that the output are converted into probabilities.
-
+        Cross-entropy loss measures the performance of a classification model whose output is a probability value
+        between 0 and 1.
+        from_logits parameter: "whether y_pred is expected to be a logits tensor. By default, we assume that y_pred
+        encodes a probability distribution." (from TensorFlow documentation).
         The final layer in our NN produces (also) logits, namely raw prediction values (un-normalized log probabilities).
         SparseCategoricalcrossEntropy(from_logits=True) expects the logits that has not been normalized by the Softmax
         activation function.
