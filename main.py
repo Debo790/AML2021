@@ -2,14 +2,19 @@
 UniTN AML final project - 2020/2021
 Implementation of Adversarial Discriminative Domain Adaptation (ADDA, Tzeng et al.)
 Authors: Andrea Debeni, Stefano Pardini
+
+- Phase 1: Pre-training
+- Phase 2: Adversarial Adaptation
+- Phase 3: Testing
 """
 
 import os
 import argparse
 import wandb
 import tensorflow as tf
+from tensorflow import keras
 
-from models import Phase1Model
+from models import LeNetEncoder, LeNetClassifier, Phase1Model
 from solvers import Phase1Solver
 from data_loaders import MNIST
 
@@ -51,8 +56,7 @@ def phase1_test(batch_size, epochs):
 
     # Load the trained model
     model_path = os.getcwd() + '/saved_models/phase1'
-    model = tf.keras.models.load_model(model_path)
-    model.summary()
+    model = keras.models.load_model(model_path)
 
     # Instantiate the solver
     solver = Phase1Solver(batch_size, epochs)
@@ -68,9 +72,12 @@ if __name__ == '__main__':
     utils.gpu_check()
 
     parser = argparse.ArgumentParser(description='ADDA')
-    parser.add_argument('-phase', type=str, default='1', help='Options: 1, 2, 3')
+    parser.add_argument('-phase', type=str, default='1', help='Options: 1 (Pre-training), 2 (Adversarial Adaptation), '
+                                                              '3 (Testing)')
+    parser.add_argument('-model_arch', type=str, default='LeNetEncoder', help='Options: LeNetEncoder, LeNetClassifier,'
+                                                                              'Discriminator')
     parser.add_argument('-mode', type=str, default='training', help='Options: training, test, deploy')
-    parser.add_argument('-wandb', type=str, default='True', help='Log on WandB (default=False)')
+    parser.add_argument('-wandb', type=str, default='False', help='Log on WandB (default=False)')
     parser.add_argument('-bs', type=int, default=32, help='Batch size')
     parser.add_argument('-e', type=int, default=10, help='Epochs')
 
@@ -92,11 +99,14 @@ if __name__ == '__main__':
 
     # In the case you'd like to bypass the parser:
     # phase1_training(epochs=10, batch_size=32)
-    # or
     # phase1_test(epochs=10, batch_size=32)
     # exit()
 
-    # Phase 1: pre-training.
+    if args.model_arch:
+        utils.show_model_architecture(args.model_arch, plot=False)
+        exit()
+
+    # Phase 1: Pre-training.
     if args.phase == 1:
         if args.mode == 'training':
             phase1_training(args.e, args.b)

@@ -1,6 +1,8 @@
 import tensorflow as tf
 import os
 
+import numpy as np
+
 """
 Freely drawn from: https://github.com/marload/LeNet-keras/blob/master/data.py
 
@@ -22,7 +24,7 @@ class MNIST():
         """
         Params:
             1. normalization:
-                should the [0,255] RGB values be normalized to a [-0.5,+0.5] range?
+                should the [0,255] RGB values be normalized?
             2. download:
                 should the dataset be automatically downloaded? If False, it'll be searched in DATASET_PATH
 
@@ -36,7 +38,7 @@ class MNIST():
         The model expects tensors arranged as (28, 28, 1); we need to apply some transformations.
         """
 
-        # Automatically download the dataset; otherwise we
+        # Automatically download the dataset; otherwise use the local one
         if download:
             (training_data, training_labels), (test_data, test_labels) = tf.keras.datasets.mnist.load_data()
         else:
@@ -54,8 +56,16 @@ class MNIST():
         else:
             training_data = training_data.reshape(training_data.shape[0], img_rows, img_cols, 1)
             test_data = test_data.reshape(test_data.shape[0], img_rows, img_cols, 1)
-            input_shape = (img_rows, img_cols, 1)
+            input_shape = (img_rows, img_cols, 3)
 
+            """
+            # Fake data test
+            training_data = np.ones(shape=(60000, 32, 32, 3))
+            test_data = np.ones(shape=(10000, 32, 32, 3))
+            input_shape = (32, 32, 3)
+            """
+
+        # Casting to 'float32' data type
         training_data = training_data.astype('float32')
         test_data = test_data.astype('float32')
 
@@ -63,6 +73,7 @@ class MNIST():
             training_data = MNIST.normalize(training_data)
             test_data = MNIST.normalize(test_data)
 
+        # Exposed instance variables
         self.input_shape = input_shape
         self.num_classes = NUM_CLASSES
         self.training_data, self.training_labels = training_data, training_labels
@@ -76,5 +87,17 @@ class MNIST():
         In particular, here we are imposing a mean equals to zero, in order to reduce the magnitude of the gradients
         and, moreover, the computational effort during the NN training. With higher values the results are going
         to be less accurate.
-        """
         return (data / 255) - 0.5
+        """
+
+        """"
+        Should we alternatively normalize the images in the [-1,1] range, as done in GAN@lab7 example?
+        return (data - 127.5) / 127.5
+        """
+
+        """
+        Otherwise, we could choose to normalize in the the [0,1] range, as in original Tzeng et al. ADDA implementation.
+        """
+        return data / 255
+
+

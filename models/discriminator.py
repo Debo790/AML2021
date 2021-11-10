@@ -15,7 +15,7 @@ class Discriminator(Model):
 
         """
         Input layer: [4 x 4 x 50]
-        The input layer shape should be equals to the output shape of the last encoder layer (pool_2)
+        The input layer shape should be equals to the output shape of the last LeNetEncoder layer (pool_2)
         """
         input_shape = (4, 4, 50)
         self.input_layer = tf.keras.layers.InputLayer(input_shape=input_shape)
@@ -52,3 +52,9 @@ class Discriminator(Model):
         Softmax assigns decimal probabilities to each class in a multi-class problem.
         """
         return x, tf.keras.activations.softmax(x)
+
+    # Superclass override
+    def summary(self, input_shape):
+        inputs = tf.keras.Input(shape=input_shape)
+        outputs = self.call(inputs)
+        return tf.keras.Model(inputs=inputs, outputs=outputs, name='Discriminator')
