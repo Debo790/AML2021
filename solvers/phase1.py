@@ -38,13 +38,14 @@ class Phase1Solver:
         self.batch_size = batch_size
         self.initial_learning_rate = ilr
 
-    def train(self, training_data, training_labels, test_data, test_labels, model) -> None:
+    def train(self, training_data, training_labels, test_data, test_labels, model):
         """
         In image classification, one of most appropriate loss function is "sparse categorical cross entropy".
         Roughly, it means that the output are converted into probabilities.
 
         The final layer in our NN produces (also) logits, namely raw prediction values (un-normalized log probabilities).
-        SparseCategoricalcrossEntropy(from_logits=True) expects the logits that has not been normalized by softmax.
+        SparseCategoricalcrossEntropy(from_logits=True) expects the logits that has not been normalized by the Softmax
+        activation function.
         """
         supervised_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
@@ -77,8 +78,15 @@ class Phase1Solver:
             # Reference: https://www.tensorflow.org/guide/autodiff#gradient_tapes
             with tf.GradientTape() as tape:
 
-                # Here we are running the model with the flag training=True.
-                # The "call" method (inside the model class) is implicitly invoked.
+                """
+                Here we are running the model (fitting the model to data), using the flag training=True.
+                It implies that the "call" method inside the model class is implicitly invoked.
+                The method returns 2 values: logits (x) and predictions (Softmax output activation function):
+                    return x, tf.keras.activations.softmax(x)
+                    
+                The logits are used in the computation of the supervised loss, together with the true y labels, coming
+                from the training data.
+                """
                 logits, preds = model(data, training=True)
                 loss = supervised_loss(y_true=labels, y_pred=logits)
 
@@ -92,7 +100,7 @@ class Phase1Solver:
             # improved during the training phase).
             optimizer.apply_gradients(zip(gradients, trainable_vars))
 
-            # Performance evaluation.
+            # Performance evaluation
             eq = tf.equal(labels, tf.argmax(preds, -1))
             accuracy = tf.reduce_mean(tf.cast(eq, tf.float32)) * 100
 

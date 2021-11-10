@@ -65,6 +65,17 @@ class LeNetEncoder(Model):
         """
         self.pool_2 = tf.keras.layers.MaxPooling2D(pool_size=(2, 2), strides=(2, 2), padding='valid')
 
+        """
+        Useful reminder.
+        Is it correct to apply ReLU activation function before the max-pooling layer?
+        
+        MaxPool(Relu(x)) = Relu(MaxPool(x)) for any input. 
+        Although it would be technically better first subsample through max-pooling and then apply the non-linearity
+        (especially if it is costly, such as the sigmoid), nevertheless in practice it is often done the other way
+        round: it doesn't seem to change much in performance.
+        
+        So, we have to consider ReLU as output activation function.
+        """
 
     def call(self, inputs, training=None, mask=None):
         x = self.input_layer(inputs)
@@ -100,8 +111,20 @@ class LeNetClassifier(Model):
         self.flatten = tf.keras.layers.Flatten()
 
         # Fully connected layer
-        self.full_layer_1 = tf.keras.layers.Dense(units=500, activation='tanh')
-        self.full_layer_2 = tf.keras.layers.Dense(units=output_classes, activation='softmax')
+        self.full_layer_1 = tf.keras.layers.Dense(units=500, activation='relu')
+
+        """
+        The last layer returns a logits array with length of 10.
+        Each node contains a score that indicates the current image belongs to one of the 10 classes.
+        
+        Here we are implicitly using a linear output activation function
+        The linear activation function is also called "identity" (multiplied by 1.0) or "no activation."   
+        
+        From TensorFlow documentation:
+        "activation: Activation function to use. If you don't specify anything, no activation is applied
+        (ie. "linear" activation: a(x) = x)."
+        """
+        self.full_layer_2 = tf.keras.layers.Dense(units=output_classes)
 
     def call(self, inputs, training=None, mask=None):
         x = self.input_layer(inputs)
@@ -109,10 +132,14 @@ class LeNetClassifier(Model):
         x = self.full_layer_1(x)
         x = self.full_layer_2(x)
 
-        # The output of the NN is passed through a Softmax activation function.
-        # Softmax assigns decimal probabilities to each class in a multi-class problem
+        """
+        The output of the NN (x, the logits array) is passed through a Softmax activation function.
+        Softmax assigns decimal probabilities to each class in a multi-class problem. Namely it converts the logits to
+        probabilities, producing a vector that is non-negative and sums to 1.
+        """
         return x, tf.keras.activations.softmax(x)
 
+    # Superclass override
     def summary(self, input_shape):
         inputs = tf.keras.Input(shape=input_shape)
         outputs = self.call(inputs)
