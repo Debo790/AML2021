@@ -15,24 +15,19 @@ class Phase1Solver:
     def __init__(self, batch_size, epochs, ilr=0.0001):
         """
         1. batch_size:
-            during the training phase (that is composed by iterations), the model is using a batch
-            of the input data with size x: x samples for iteration. The bigger the value, the more statistics have to
-            be computed during the weights updating phase. It means that if the batch is quite high, the gradients will be
-            quite low; so their updates will be quite small and the training process could take longer time.
+            A batch size of 32 means that 32 samples from the training dataset will be used to estimate the error
+            gradient before the model weights are updated.
 
         2. epochs:
-            how many times you want to use your data before stopping the training.
-            Imagine to have a dataset with 100 data points (images), and a batch_size equals to 10.
-            It means that after 10 iterations we'll see the entire dataset at least once (then, you'll start again
-            from the beginning). Exactly at this point, one epoch is passed. In general, the training phase of a NN is
-            measured by epochs.
-            Empirical observation: at some time, during the training phase, you'll see that the results won't increase
-            anymore. At that point it's better to stop the training.
-            So, briefly, the epoch means: how many time the training phase is going to use the entire dataset.
+            One training epoch means that the learning algorithm has made one pass through the training dataset,
+            where examples were separated into randomly selected “batch size” groups.
 
         3. ilr (initial learning rate):
-            how fast the training phase is moving toward the local minimum; the higher is the
-            value, the faster it'll move to the local minimum, the hardest it'll get close the local minimum.
+            The learning rate is a hyperparameter that controls how much to change the model in response to the
+            estimated error each time the model weights are updated.
+            Choosing the learning rate is challenging as a value too small may result in a long training process
+            that could get stuck, whereas a value too large may result in learning a sub-optimal set of weights
+            too fast or an unstable training process.
         """
         self.epochs = epochs
         self.batch_size = batch_size
@@ -57,7 +52,7 @@ class Phase1Solver:
         This function is going to manage the exponential decay by itself; we just need to pass an initial learning rate,
         also defining after how many steps/iterations the learning rate have to decay (decay_steps=250).
         staircase=True means that the learning rate remains steady until an incremental decay_step is reached  
-        (the learning rate it's multiplied by 0.96 every decay_step: 25o, 500, 750, etc.).
+        (the learning rate it's multiplied by 0.96 every decay_step: 250, 500, 750, etc.).
         
         More generally, this is an optimization effective option: a higher initial learning rate means that the 
         optimization process will quickly move towards the local minimum. Then, subsequently, a smaller learning rate
