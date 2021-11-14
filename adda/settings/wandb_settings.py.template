@@ -1,0 +1,13 @@
+"""
+Fill the parameters and rename this file into wandb_settings.py
+"""
+import os
+
+# WandB username
+os.environ['WANDB_ENTITY'] = ''
+# WandB API key
+os.environ['WANDB_API_KEY'] = ''
+# WandB project name
+os.environ['WANDB_PROJECT'] = 'AML-ADDA'
+# Local folder in which to store WandB generated contents
+os.environ['WANDB_DIR'] = 'os.getcwd() + '/adda/wandb'

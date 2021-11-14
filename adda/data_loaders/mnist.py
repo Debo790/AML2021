@@ -1,8 +1,6 @@
 import tensorflow as tf
 import os
 
-import numpy as np
-
 """
 Freely drawn from: https://github.com/marload/LeNet-keras/blob/master/data.py
 

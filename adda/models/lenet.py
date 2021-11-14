@@ -127,6 +127,9 @@ class LeNetClassifier(Model):
         self.full_layer_2 = tf.keras.layers.Dense(units=output_classes)
 
     def call(self, inputs, training=None, mask=None):
+        """
+        Training parameter: boolean indicating whether to run the Network in training mode or inference mode.
+        """
         x = self.input_layer(inputs)
         x = self.flatten(x)
         x = self.full_layer_1(x)

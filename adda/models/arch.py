@@ -1,37 +1,26 @@
-import tensorflow as tf
-import os
-import cpuinfo
-from models import LeNetEncoder, LeNetClassifier, Discriminator
+from adda.models import LeNetEncoder, LeNetClassifier, Discriminator, Phase1Model
 import numpy as np
+import tensorflow as tf
 
 
-def gpu_check():
-    """
-    Select the computational core: CPU or GPU.
-    """
-    if tf.test.gpu_device_name():
-        print(f'Default GPU device: {tf.test.gpu_device_name()}')
-    else:
-        CPU_brand = cpuinfo.get_cpu_info()['brand_raw']
-        print(f'No GPU found, let\'s use CPU: {CPU_brand}')
-        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-
-
-def show_model_architecture(class_name, plot=False):
+def show_model_arch(class_name, plot=False):
     """
     Show and/or plot the summary of the selected model architecture
     """
-    assert class_name in ['LeNetEncoder', 'LeNetClassifier', 'Discriminator'], 'class_name not found'
+    assert class_name in ['LeNetEncoder', 'LeNetClassifier', 'Discriminator', 'Phase1Model'], 'class_name not found'
 
     # Dynamically instantiate a object
-    if class_name == 'LeNetEncoder':
+    if class_name == 'LeNetEncoder' or class_name == 'Phase1Model':
         # Produce MNIST format input fake data
         data = {
             'training_data': np.ones(shape=(32, 28, 28, 1)),
             'test_data': np.ones(shape=(32, 28, 28, 1)),
             'input_shape': (28, 28, 1)
         }
-        model = LeNetEncoder(data['input_shape'])
+        if class_name == 'LeNetEncoder':
+            model = LeNetEncoder(data['input_shape'])
+        elif class_name == 'Phase1Model':
+            model = Phase1Model(data['input_shape'], output_classes=10)
 
     else:
         # Produce LeNetEncoder output fake data
@@ -52,9 +41,14 @@ def show_model_architecture(class_name, plot=False):
     model(training_data, training=True)
 
     # Now we can extract and print the model summary
-    print(model.summary(data['input_shape']).summary())
+    print(model.summary(data['input_shape']))
 
     # Eventually graphically
     if plot:
-        tf.keras.utils.plot_model(model.summary(data.input_shape), to_file='LeNetEncoder.png', dpi=96, show_shapes=True,
-                                  show_layer_names=True, expand_nested=False)
+        tf.keras.utils.plot_model(model.summary(data['input_shape']), to_file=class_name + '.png', dpi=96,
+                                  show_shapes=True, show_layer_names=True, expand_nested=False)
+
+    # Recursive call to unwrap the nested models
+    if class_name == 'Phase1Model':
+        show_model_arch('LeNetEncoder')
+        show_model_arch('LeNetClassifier')
