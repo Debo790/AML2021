@@ -5,7 +5,7 @@
 Implementation of Adversarial Discriminative Domain Adaptation.
 
 [Tzeng, Eric, et al. "Adversarial discriminative domain adaptation." Proceedings of the IEEE conference on computer 
-vision and pattern recognition. 2017.]((https://arxiv.org/abs/1702.05464))
+vision and pattern recognition. 2017.](https://arxiv.org/abs/1702.05464)
 
 ## Environment / requirements
 

@@ -130,5 +130,6 @@ dmypy.json
 
 # Stefano's additional files
 INFO
-adda/wandb/
+wandb/
 adda/settings/wandb_settings.py
+saved_models/

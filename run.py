@@ -8,11 +8,24 @@ Authors: Andrea Debeni, Stefano Pardini
 import os
 import argparse
 import wandb
+import cpuinfo
+import tensorflow as tf
 
-import adda.utils as utils
 import adda.settings.wandb_settings
 import adda.models.arch as arch
 import adda.app as app
+
+
+def gpu_check():
+    """
+    Select the computational core: CPU or GPU.
+    """
+    if tf.test.gpu_device_name():
+        print(f'Default GPU device: {tf.test.gpu_device_name()}')
+    else:
+        CPU_brand = cpuinfo.get_cpu_info()['brand_raw']
+        print(f'No GPU found, let\'s use CPU: {CPU_brand}')
+        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
 def main():
@@ -20,7 +33,7 @@ def main():
     This module is responsible for parsing the command line parameters, launching functions from adda.app package.
     """
 
-    utils.gpu_check()
+    gpu_check()
 
     parser = argparse.ArgumentParser(description='ADDA')
     parser.add_argument('-phase', type=str, default='1', help='Options: 1 (Pre-training), 2 (Adversarial Adaptation), '
