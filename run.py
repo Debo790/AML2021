@@ -63,8 +63,8 @@ def main():
 
     # In the case you'd like to bypass the args parser:
     # app.phase1_training(epochs=10, batch_size=32)
-    app.phase1_test(epochs=10, batch_size=32)
-    exit()
+    # app.phase1_test(epochs=10, batch_size=32)
+    # exit()
 
     if args.model_arch:
         arch.show_model_arch(args.model_arch, plot=False)

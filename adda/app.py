@@ -2,7 +2,7 @@ from tensorflow import keras
 
 from adda.models import LeNetEncoder, LeNetClassifier, Phase1Model
 from adda.solvers import Phase1Solver
-from adda.data import MNIST
+from adda.data_loaders import MNIST
 
 from adda.settings import config as cfg
 
