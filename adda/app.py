@@ -1,8 +1,9 @@
 from tensorflow import keras
 
-from adda.models import LeNetEncoder, LeNetClassifier, Phase1Model
-from adda.solvers import Phase1Solver
+from adda.models import LeNetEncoder, LeNetClassifier, Phase1Model, Discriminator
+from adda.solvers import Phase1Solver, Phase2Solver
 from adda.data_loaders import MNIST
+from adda.data_loaders import USPS
 
 from adda.settings import config as cfg
 
@@ -14,8 +15,8 @@ def phase1_training(batch_size, epochs):
 
     "We first pre-train a source encoder CNN using labeled source image examples." (Tzeng et al., 2017)
     """
-    # Load the dataset
-    data = MNIST()
+    # Load the dataset. We're interested in the whole dataset.
+    data = MNIST(sample=False)
 
     # Load and initialize the model (composed by: encoder + classifier)
     model = Phase1Model(data.input_shape, data.num_classes)
@@ -35,7 +36,7 @@ def phase1_test(batch_size, epochs):
     Testing the test dataset using the Phase1 saved model.
     """
     # Load the dataset
-    data = MNIST()
+    data = MNIST(sample=False)
 
     # Load the trained model
     model = keras.models.load_model(cfg.PHASE1_MODEL_PATH, compile=False)
@@ -54,8 +55,26 @@ def phase2_adaptation(batch_size, epochs):
     "Perform adversarial adaptation by learning a target encoder CNN such that a discriminator that sees encoded source and
     target examples cannot reliably predict their domain label." (Tzeng et al., 2017)
     """
-    # TODO.
+    # Load the datasets
+    data_mnist = MNIST(sample=True)
+    data_usps = USPS(sample=True, resize28=True)
 
+    src_model = keras.models.load_model(cfg.SOURCE_MODEL_PATH, compile=False)
+    """
+    As we can read in Tzeng. et al's paper:
+    [...] we use the pre-trained source model as an intitialization for the target representation space and
+    fix the target model during adversarial training.
+    """
+    tgt_model = src_model
+
+    disc_model = Discriminator()
+
+    # Instantiate the solver
+    solver = Phase2Solver(batch_size, epochs)
+
+    # Run the training
+    solver.train(data_mnist.training_data, data_mnist.training_labels, data_usps.training_data,
+                 data_usps.training_labels, src_model, tgt_model, disc_model)
 
 def phase3_testing(batch_size, epochs):
     """
