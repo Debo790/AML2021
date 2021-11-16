@@ -10,7 +10,7 @@ hidden units followed by the final discriminator output. Each of the 500-unit la
 
 
 class Discriminator(Model):
-    def __init__(self, input_shape):
+    def __init__(self, input_shape=(4, 4, 50)):
         super(Discriminator, self).__init__(trainable=True)
 
         """
@@ -39,7 +39,7 @@ class Discriminator(Model):
         self.full_layer_3 = tf.keras.layers.Dense(units=2)
 
     def call(self, inputs, training=None, mask=None):
-        x = self.inputLayer(inputs)
+        x = self.input_layer(inputs)
         x = self.full_layer_1(x)
         x = self.full_layer_2(x)
         x = self.full_layer_3(x)
