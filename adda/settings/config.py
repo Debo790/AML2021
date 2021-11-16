@@ -11,4 +11,6 @@ PHASE1_MODEL_PATH = SAVED_MODELS_PATH + 'phase1'
 DISCRIMINATOR_MODEL_PATH = os.getcwd() + 'discriminator'
 TARGET_MODEL_PATH = os.getcwd() + 'target_encoder'
 
-MNIST_DATASET_PATH = DATASETS_PATH + 'mnist.npz'
+MNIST_DATASET_PATH = DATASETS_PATH + 'mnist/mnist.npz'
+USPS_DATASET_TRAIN = DATASETS_PATH + 'usps/zip.train.gz'
+USPS_DATASET_TEST = DATASETS_PATH + 'usps/zip.test.gz'
