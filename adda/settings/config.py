@@ -8,8 +8,8 @@ SOURCE_MODEL_PATH = SAVED_MODELS_PATH + 'source_encoder'
 CLASSIFIER_MODEL_PATH = SAVED_MODELS_PATH + 'classifier'
 PHASE1_MODEL_PATH = SAVED_MODELS_PATH + 'phase1'
 
-DISCRIMINATOR_MODEL_PATH = os.getcwd() + 'discriminator'
-TARGET_MODEL_PATH = os.getcwd() + 'target_encoder'
+DISCRIMINATOR_MODEL_PATH = SAVED_MODELS_PATH + 'discriminator'
+TARGET_MODEL_PATH = SAVED_MODELS_PATH + 'target_encoder'
 
 MNIST_DATASET_PATH = DATASETS_PATH + 'mnist/mnist.npz'
 USPS_DATASET_TRAIN = DATASETS_PATH + 'usps/zip.train.gz'
