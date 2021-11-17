@@ -2,8 +2,10 @@
 UniTN AML final project - 2020/2021
 Implementation of Adversarial Discriminative Domain Adaptation - ADDA (Tzeng et al., 2017)
 Authors: Andrea Debeni, Stefano Pardini
-"""
 
+This module is the entry point of the program, it is responsible for parsing the command line parameters, launching
+functions from adda.app package.
+"""
 
 import os
 import argparse
@@ -30,9 +32,8 @@ def gpu_check():
 
 def main():
     """
-    This module is responsible for parsing the command line parameters, launching functions from adda.app package.
+    Command line arguments parser; launcher.
     """
-
     gpu_check()
 
     parser = argparse.ArgumentParser(description='ADDA')
@@ -64,8 +65,9 @@ def main():
     # In the case you'd like to bypass the args parser:
     # app.phase1_training(epochs=10, batch_size=32)
     # app.phase1_test(epochs=10, batch_size=32)
-    app.phase2_adaptation(epochs=10, batch_size=32)
-    exit()
+    # app.phase2_adaptation(epochs=50, batch_size=32)
+    # arch.show_model_arch('LeNetClassifier', plot=True)
+    # exit()
 
     if args.model_arch:
         arch.show_model_arch(args.model_arch, plot=False)
@@ -83,12 +85,12 @@ def main():
             else:
                 single_image(args.i)
             """
-    # Phase 1: Adversarial Adaptation
-    elif args.phase == 2:
-        None
-        # TODO.
 
-    # Phase 1: Adversarial Adaptation
+    # Phase 2: Adversarial Adaptation
+    elif args.phase == 2:
+        app.phase2_adaptation(epochs=args.e, batch_size=args.b)
+
+    # Phase 3: Testing
     elif args.phase == 3:
         None
         # TODO.

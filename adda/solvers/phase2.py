@@ -33,7 +33,10 @@ class Phase2Solver:
         always be 0.0. Therefore, a cross-entropy of 0.0 when training a model indicates that the predicted class
         probabilities are identical to the probabilities in the training dataset, e.g. zero loss.
         """
-        supervised_loss = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+
+        # TODO.
+        # supervised_loss = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+        supervised_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
         def get_disc_loss(data_labels, pred_labels):
             """
@@ -98,7 +101,7 @@ class Phase2Solver:
 
             """
             Concatenates the tensors feature; first the Source encoded tensors, then the Target ones.
-            The resultant tensor is: [ 64 x ? ]
+            The resultant tensor is: (64, 4, 4, 50)
             Should it be 500? If yes, we've to anticipate the flattening operation in the Encoder model.
             """
             concat_features = tf.concat([src_features, tgt_features], 0)
@@ -108,8 +111,11 @@ class Phase2Solver:
                 1 = Source label
                 0 = Target label
             """
-            src_labels = tf.zeros([tf.shape(src_features)[0]], tf.int32)
-            tgt_labels = tf.ones([tf.shape(tgt_features)[0]], tf.int32)
+            # TODO.
+            # int32, float32 or int64?
+            # Using int64 we can directly compare the labels with the argmax of the logits; no casting is needed
+            src_labels = tf.zeros([tf.shape(src_features)[0]], tf.int64)
+            tgt_labels = tf.ones([tf.shape(tgt_features)[0]], tf.int64)
             concat_labels = tf.concat([src_labels, tgt_labels], 0)
 
             """
@@ -133,7 +139,12 @@ class Phase2Solver:
             disc_optimizer.apply_gradients(zip(disc_gradients, disc_trainable_vars))
 
             # Performance evaluation: simply, the percentage of successfully predicted labels.
-            disc_eq = tf.equal(concat_labels, disc_preds)
+            # Training labels VS Discriminator labels
+
+            # disc_preds is a [64 x 2] tensor (the final Discriminator layer has 2 neurons); dtype = float32
+            # With tf.argmax(disc_preds, -1)) we get the maximum value among the two, representing the most
+            # confident prediction; the resultant dtype = int64
+            disc_eq = tf.equal(concat_labels, tf.argmax(disc_preds, -1))
             disc_accuracy = tf.reduce_mean(tf.cast(disc_eq, tf.float32)) * 100
 
             """
@@ -147,8 +158,12 @@ class Phase2Solver:
             """
             with tf.GradientTape() as tgt_tape:
                 # Fitting the Target encoder to the target data points only
-                tgt_model(tgt_data, training=True)
-                tgt_loss = get_tgt_encoder_loss(concat_labels, disc_logits)
+                tgt_features = tgt_model(tgt_data, training=True)
+                disc_logits, disc_preds = disc_model(tgt_features, training=False)
+
+                # concat_labels = (64,), int64
+                # disc_logits = (64, 2), float32
+                tgt_loss = get_tgt_encoder_loss(tgt_labels, disc_logits)
 
             # The trainable variables are all the weights of the Target NN.
             tgt_trainable_vars = tgt_model.trainable_variables
@@ -189,7 +204,7 @@ class Phase2Solver:
                 global_step += 1
 
                 # Invoke the inner function train_step()
-                batch_loss, batch_accuracy = train_step(src_data, src_labels, tgt_data, tgt_labels)
+                batch_loss, batch_accuracy, _ = train_step(src_data, src_labels, tgt_data, tgt_labels)
 
                 # The on going accuracy is shown every 50 steps.
                 if global_step % 50 == 0:
