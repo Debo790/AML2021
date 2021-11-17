@@ -20,6 +20,9 @@ class Discriminator(Model):
         input_shape = (4, 4, 50)
         self.input_layer = tf.keras.layers.InputLayer(input_shape=input_shape)
 
+        # Reshape the tensor dimensions to a single one
+        self.flatten = tf.keras.layers.Flatten()
+
         # Fully connected layers
         self.full_layer_1 = tf.keras.layers.Dense(units=500, activation='relu')
         self.full_layer_2 = tf.keras.layers.Dense(units=500, activation='relu')
@@ -40,6 +43,7 @@ class Discriminator(Model):
 
     def call(self, inputs, training=None, mask=None):
         x = self.input_layer(inputs)
+        x = self.flatten(x)
         x = self.full_layer_1(x)
         x = self.full_layer_2(x)
         x = self.full_layer_3(x)
