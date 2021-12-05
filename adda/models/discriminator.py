@@ -28,16 +28,8 @@ class Discriminator(Model):
         self.full_layer_2 = tf.keras.layers.Dense(units=500, activation='relu')
 
         """
-        TODO.
-        The last layer doesn't need an activation function (implicitly used a linear output activation function).
-        
-        Here we're not sure about the number of neurons it should be used.
+        The last layer doesn't need an activation function (implicitly uses a linear output activation function).
         Tzeng TensorFlow 1.x implementation and PyTorch ADDA implementation both use 2 neurons at the final layer.
-        
-        But, theoretically, we just need one neuron at the final layer, because we are producing a binary
-        classification:
-        0: Source CNN
-        1: Target CNN
         """
         self.full_layer_3 = tf.keras.layers.Dense(units=2)
 
@@ -49,11 +41,9 @@ class Discriminator(Model):
         x = self.full_layer_3(x)
 
         """
-        TODO.
-        It the case we decided to use a single neuron output layer, Should we use a Softmax activation function?
-        
         The output of the NN is passed through a Softmax activation function.
-        Softmax assigns decimal probabilities to each class in a multi-class problem.
+        Softmax assigns decimal probabilities to each class in a multi-class problem; get the argmax in order to select 
+        the most confident class prediction.
         """
         return x, tf.keras.activations.softmax(x)
 

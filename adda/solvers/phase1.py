@@ -151,6 +151,11 @@ class Phase1Solver:
                     print('[{0}-{1:03}] loss: {2:0.05}, batch_accuracy: {3:0.03}'
                           .format(e + 1, global_step, batch_loss.numpy(), batch_accuracy.numpy()))
 
+                    print(batch_loss.numpy())
+                    print(batch_accuracy.numpy())
+
+                    exit()
+
                     # Updating the learning rate accordingly with the optimizer criteria
                     lr = optimizer._decayed_lr(tf.float32).numpy()
 
@@ -222,6 +227,7 @@ class Phase1Solver:
         # Calculate the the percentage of successfully predicted labels.
         test_accuracy = tf.reduce_mean(tf.cast(eq, tf.float32)) * 100
 
-        print('Loss: {0:0.05}, test accuracy: {1:0.03}'.format(loss.numpy(), test_accuracy.numpy()))
+        print('Loss: {0:0.05}, test accuracy: {1:0.03}'
+              .format(loss.numpy(), test_accuracy.numpy()))
 
         return loss, test_accuracy, test_preds
