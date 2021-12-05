@@ -65,7 +65,8 @@ def main():
     # In the case you'd like to bypass the args parser:
     # app.phase1_training(epochs=10, batch_size=32)
     # app.phase1_test(epochs=10, batch_size=32)
-    # app.phase2_adaptation(epochs=50, batch_size=32)
+    app.phase2_adaptation(epochs=100, batch_size=32)
+    # app.phase3_testing(epochs=10, batch_size=32)
     # arch.show_model_arch('LeNetClassifier', plot=True)
     # exit()
 
@@ -92,8 +93,7 @@ def main():
 
     # Phase 3: Testing
     elif args.phase == 3:
-        None
-        # TODO.
+        app.phase3_testing(epochs=args.e, batch_size=args.b)
 
 
 if __name__ == '__main__':

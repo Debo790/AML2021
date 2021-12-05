@@ -1,7 +1,7 @@
 from tensorflow import keras
 
 from adda.models import LeNetEncoder, LeNetClassifier, Phase1Model, Discriminator
-from adda.solvers import Phase1Solver, Phase2Solver
+from adda.solvers import Phase1Solver, Phase2Solver, Phase3Solver
 from adda.data_loaders import MNIST
 from adda.data_loaders import USPS
 
@@ -63,18 +63,19 @@ def phase2_adaptation(batch_size, epochs):
     """
     As we can read in Tzeng. et al's paper:
     [...] we use the pre-trained source model as an intitialization for the target representation space and
-    fix the target model during adversarial training.
+    fix the source (typo: target?) model during adversarial training.
     """
     tgt_model = src_model
-
     disc_model = Discriminator()
+    cls_model = keras.models.load_model(cfg.CLASSIFIER_MODEL_PATH, compile=False)
 
     # Instantiate the solver
     solver = Phase2Solver(batch_size, epochs)
 
     # Run the training
     solver.train(data_mnist.training_data, data_mnist.training_labels, data_usps.training_data,
-                 data_usps.training_labels, src_model, tgt_model, disc_model)
+                 data_usps.training_labels, src_model, tgt_model, disc_model, cls_model)
+
 
 def phase3_testing(batch_size, epochs):
     """
@@ -83,4 +84,23 @@ def phase3_testing(batch_size, epochs):
     "During testing, target images are mapped with the target encoder to the shared feature space and classified by the
     source classifier." (Tzeng et al., 2017)
     """
-    # TODO.
+
+    # Load the dataset
+    data = USPS(sample=False)
+
+    # Load the Classifier model, trained during phase 1
+    cls_model = keras.models.load_model(cfg.CLASSIFIER_MODEL_PATH)
+    # Load the Target encoder, trained during phase 2
+    tgt_model = keras.models.load_model(cfg.CLASSIFIER_MODEL_PATH)
+
+    # Instantiate the solver
+    solver = Phase3Solver(batch_size, epochs)
+
+    # Run the test
+    solver.test(data.training_data, data.training_labels, cls_model, tgt_model)
+
+
+
+
+
+
