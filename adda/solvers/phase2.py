@@ -19,7 +19,7 @@ class Phase2Solver:
         self.initial_learning_rate = ilr
 
     def train(self, src_training_data, src_training_labels, tgt_training_data, tgt_training_labels,
-              src_model, tgt_model, disc_model):
+              src_model, tgt_model, disc_model, cls_model):
 
         """
         From TensorFlow documentation:
@@ -48,6 +48,12 @@ class Phase2Solver:
             """
             return supervised_loss(data_labels, pred_labels)
 
+            # https://www.tensorflow.org/api_docs/python/tf/nn/softmax_cross_entropy_with_logits
+            # return tf.nn.sparse_softmax_cross_entropy_with_logits(data_labels, pred_labels)
+
+            # https://github.com/byeongjokim/ADDA
+            # return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=pred_labels, labels=tf.ones_like(pred_labels)))
+
         def get_tgt_encoder_loss(data_labels, pred_labels):
             """
             The aim of the Target Encoder is to produce a feature map such that the Discriminator isn't able to
@@ -68,6 +74,12 @@ class Phase2Solver:
             """
             return supervised_loss(1 - data_labels, pred_labels)
 
+            # https://www.tensorflow.org/api_docs/python/tf/nn/softmax_cross_entropy_with_logits
+            # return tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(1 - data_labels, pred_labels))
+
+            # https://github.com/byeongjokim/ADDA
+            # return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=pred_labels, labels=tf.zeros_like(pred_labels)))
+
         """
         When training a model, it is often useful to lower the learning rate as the training progresses.
         This schedule applies an exponential decay function to an optimizer step.
@@ -79,6 +91,7 @@ class Phase2Solver:
             staircase=True)
         # Defining the Discriminator optimizer
         disc_optimizer = tf.keras.optimizers.Adam(learning_rate=disc_lr_schedule)
+        # disc_optimizer = tf.keras.optimizers.Adam(self.initial_learning_rate)
 
         tgt_lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             self.initial_learning_rate,
@@ -87,10 +100,13 @@ class Phase2Solver:
             staircase=True)
         # Defining the Target optimizer
         tgt_optimizer = tf.keras.optimizers.Adam(learning_rate=tgt_lr_schedule)
+        # tgt_optimizer = tf.keras.optimizers.Adam(self.initial_learning_rate)
 
         @tf.function
-        def train_step(src_data, src_labels, tgt_data, tgt_labels):
+        def train_step(src_data, tgt_data, orig_src_labels, orig_tgt_labels):
             """
+            Forward pass, loss calculation, backpropagation, metric updates.
+
             Fitting the models to the data batch.
             In this phase both models are used "as they are" (inference mode; training=False).
             The Source encoder has already been completely trained (Pre-training phase), while the Target encoder
@@ -102,35 +118,39 @@ class Phase2Solver:
             """
             Concatenates the tensors feature; first the Source encoded tensors, then the Target ones.
             The resultant tensor is: (64, 4, 4, 50)
-            Should it be 500? If yes, we've to anticipate the flattening operation in the Encoder model.
             """
             concat_features = tf.concat([src_features, tgt_features], 0)
 
             """
             Prepare real and fake labels:
-                1 = Source label
-                0 = Target label
+                0 = Source label
+                1 = Target label
             """
-            # TODO.
             # int32, float32 or int64?
             # Using int64 we can directly compare the labels with the argmax of the logits; no casting is needed
-            src_labels = tf.zeros([tf.shape(src_features)[0]], tf.int64)
-            tgt_labels = tf.ones([tf.shape(tgt_features)[0]], tf.int64)
+            src_labels = tf.zeros(len(src_data), tf.int64)
+            tgt_labels = tf.ones(len(tgt_data), tf.int64)
             concat_labels = tf.concat([src_labels, tgt_labels], 0)
+
+            """
+            Discriminator
+            """
 
             """
             To differentiate automatically, TensorFlow needs to remember what operations happen in what order during
             the forward pass. Then, during the backward pass, TensorFlow traverses this list of operations in reverse
             order to compute gradients. These operations are recorded into a tape.
+
+            https://www.tensorflow.org/guide/keras/writing_a_training_loop_from_scratch
+            Calling a model inside a GradientTape scope enables you to retrieve the gradients of the trainable weights
+            of the layer with respect to a loss value. Using an optimizer instance, you can use these gradients to
+            update these variables (which you can retrieve using model.trainable_weights).
             """
             with tf.GradientTape() as disc_tape:
                 # Fitting the Discriminator to the merged data points (concat)
                 disc_logits, disc_preds = disc_model(concat_features, training=True)
                 disc_loss = get_disc_loss(concat_labels, disc_logits)
 
-            """
-            Discriminator
-            """
             # The trainable variables are all the weights of the Discriminator NN
             disc_trainable_vars = disc_model.trainable_variables
             # Backward pass: calculate the gradients by unwrapping the tape
@@ -151,11 +171,6 @@ class Phase2Solver:
             Target encoder
             """
 
-            """
-            To differentiate automatically, TensorFlow needs to remember what operations happen in what order during
-            the forward pass. Then, during the backward pass, TensorFlow traverses this list of operations in reverse
-            order to compute gradients. These operations are recorded into a tape.
-            """
             with tf.GradientTape() as tgt_tape:
                 # Fitting the Target encoder to the target data points only
                 tgt_features = tgt_model(tgt_data, training=True)
@@ -165,51 +180,110 @@ class Phase2Solver:
                 # disc_logits = (64, 2), float32
                 tgt_loss = get_tgt_encoder_loss(tgt_labels, disc_logits)
 
+            # For debugging purposes only
+            # tgt_tape.watched_variables()
+            # disc_tape.watched_variables()
+
             # The trainable variables are all the weights of the Target NN.
             tgt_trainable_vars = tgt_model.trainable_variables
             # Backward pass: calculate the gradients by unwrapping the tape
-            tgt_gradients = tgt_tape.gradient(tgt_loss, tgt_model.trainable_variables)
-            # Optimization: apply the gradients to the trainable variables (weights)
+            tgt_gradients = tgt_tape.gradient(tgt_loss, tgt_trainable_vars)
+            # Optimization / weights update: apply the gradients to the trainable variables (weights)
             tgt_optimizer.apply_gradients(zip(tgt_gradients, tgt_trainable_vars))
 
-            return disc_loss, disc_accuracy, tgt_loss
+            """
+            Classifier performance evaluation: simply, the percentage of successfully predicted labels.
+            argmax returns the index with the largest value across axes of a tensor (namely: the most confident 
+            class prediction).
+            
+            Remember that cls_preds == logits
+            """
+            cls_preds, _ = cls_model(src_features, training=False)
+            cls_eq = tf.equal(orig_src_labels, tf.argmax(cls_preds, -1))
+            src_cls_accuracy = tf.reduce_mean(tf.cast(cls_eq, tf.float32)) * 100
+
+            cls_preds, _ = cls_model(tgt_features, training=False)
+            cls_eq = tf.equal(orig_src_labels, tf.argmax(cls_preds, -1))
+            tgt_cls_accuracy = tf.reduce_mean(tf.cast(cls_eq, tf.float32)) * 100
+
+            cls_preds, _ = cls_model(concat_features, training=False)
+            orig_concat_labels = tf.concat([orig_src_labels, orig_tgt_labels], 0)
+            cls_eq = tf.equal(orig_concat_labels, tf.argmax(cls_preds, -1))
+            concat_cls_accuracy = tf.reduce_mean(tf.cast(cls_eq, tf.float32)) * 100
+
+            return disc_loss, disc_accuracy, tgt_loss, src_cls_accuracy, tgt_cls_accuracy, concat_cls_accuracy
 
         global_step = 0
-        best_accuracy = 0.0
+        tgt_cls_accuracy_list = []
+        src_cls_accuracy_list = []
 
         # External for loop: one iteration for each epoch.
         for e in range(self.epochs):
 
             # Source training set shuffling
-            perm = np.arange(len(src_training_labels))
+            perm = np.arange(len(src_training_data))
             random.shuffle(perm)
             src_training_data = src_training_data[perm]
             src_training_labels = src_training_labels[perm]
 
             # Target training set shuffling
-            perm = np.arange(len(tgt_training_labels))
+            perm = np.arange(len(tgt_training_data))
             random.shuffle(perm)
             tgt_training_data = tgt_training_data[perm]
             tgt_training_labels = tgt_training_labels[perm]
 
+            # Adjust the fact that the datasets could be of different sizes, causing a not aligned batching
+            # Policy: always choose the smaller dataset as reference
+            src_len = len(src_training_data)
+            tgt_len = len(tgt_training_data)
+            if src_len > tgt_len:
+                training_len = tgt_len
+            else:
+                training_len = src_len
+
             # With batch_size = 32, i = [0, 31, 63, ..]
-            for i in range(0, len(src_training_labels), self.batch_size):
+            for i in range(0, training_len, self.batch_size):
 
                 # Slicing the data and the labels (both: source and target), generating a batch of size batch_size
                 src_data = src_training_data[i:i + self.batch_size, :]
-                src_labels = tgt_training_labels[i:i + self.batch_size, ].astype('int64')
                 tgt_data = tgt_training_data[i:i + self.batch_size, :]
+                src_labels = src_training_labels[i:i + self.batch_size, ].astype('int64')
                 tgt_labels = tgt_training_labels[i:i + self.batch_size, ].astype('int64')
+
+                # We've to deal with a batching issue.
+                # As defined in Tzeng's paper, from MNIST are sampled 2000 images, 1800 from USPS.
+                # The last batch has to be padded: we're going to use random data points to reach the exact batch size.
+                actual_batch_size = len(tgt_data)
+                if actual_batch_size < self.batch_size:
+                    residual_size = self.batch_size - actual_batch_size
+
+                    # Exactly get the first residual_size data points needed to complete the batch
+                    random_choice = np.random.choice(len(tgt_training_data), size=residual_size, replace=False)
+                    random_sample = tgt_training_data[random_choice]
+                    tgt_data = np.concatenate((tgt_data, random_sample))
+                    random_sample = tgt_training_labels[random_choice]
+                    tgt_labels = np.concatenate((tgt_labels, random_sample))
 
                 global_step += 1
 
                 # Invoke the inner function train_step()
-                batch_loss, batch_accuracy, _ = train_step(src_data, src_labels, tgt_data, tgt_labels)
+                disc_loss, disc_accuracy, tgt_loss, src_cls_accuracy, tgt_cls_accuracy, concat_cls_accuracy = \
+                    train_step(src_data, tgt_data, src_labels, tgt_labels)
 
-                # The on going accuracy is shown every 50 steps.
+                tgt_cls_accuracy_list.append(tgt_cls_accuracy.numpy())
+                src_cls_accuracy_list.append(src_cls_accuracy.numpy())
+
+                # Ongoing accuracy is shown every 50 steps.
                 if global_step % 50 == 0:
-                    print('[{0}-{1:03}] batch_loss: {2:0.05}, batch_accuracy: {3:0.03}'
-                          .format(e + 1, global_step, batch_loss.numpy(), batch_accuracy.numpy()))
+                    print('[{0}-{1:03}] batch_loss: {2:0.05}, batch_accuracy: {3:0.03}, tgt_loss: {4:0.05}, '
+                          'src_cls_accuracy: {5:0.03}, tgt_cls_accuracy: {6:0.03}, concat_cls_accuracy: {7:0.03}'
+                          .format(e + 1, global_step, disc_loss.numpy(), disc_accuracy.numpy(), tgt_loss.numpy(),
+                                  src_cls_accuracy.numpy(), tgt_cls_accuracy.numpy(), concat_cls_accuracy.numpy()))
+
+                    print('tgt_cls_accuracy_mean: {0:0.03}'
+                          .format(sum(tgt_cls_accuracy_list) / len(tgt_cls_accuracy_list)))
+                    print('src_cls_accuracy_mean: {0:0.03}'
+                          .format(sum(src_cls_accuracy_list) / len(src_cls_accuracy_list)))
 
                     # Updating the Discriminator learning rate accordingly with the optimizer criteria
                     disc_lr = disc_optimizer._decayed_lr(tf.float32).numpy()
@@ -217,9 +291,14 @@ class Phase2Solver:
                     tgt_lr = tgt_optimizer._decayed_lr(tf.float32).numpy()
 
                     wandb.log(
-                        {'train/batch_loss': batch_loss,
-                         'train/batch_accuracy': batch_accuracy,
-                         'train/disc_learning_rate': disc_lr
+                        {'train/disc_loss': disc_loss,
+                         'train/disc_accuracy': disc_accuracy,
+                         'train/tgt_loss': tgt_loss,
+                         'train/disc_learning_rate': disc_lr,
+                         'train/tgt_learning_rate': tgt_lr,
+                         'train/src_cls_accuracy': src_cls_accuracy,
+                         'train/tgt_cls_accuracy': tgt_cls_accuracy,
+                         'train/concat_cls_accuracy': concat_cls_accuracy
                          })
 
                 if global_step == 1:
@@ -229,8 +308,8 @@ class Phase2Solver:
             # TODO.
             # Save the Discriminator and Target model at the end of each epoch
             # Should we evaluate/test, in some way, the Discriminator?
-            disc_model.save(config.DISCRIMINATOR_MODEL_PATH)
-            tgt_model.save(config.TARGET_MODEL_PATH)
+            # disc_model.save(config.DISCRIMINATOR_MODEL_PATH, save_format='tf')
+            # tgt_model.save(config.TARGET_MODEL_PATH, save_format='tf')
 
             """
             TODO.
