@@ -49,7 +49,7 @@ class Phase2Solver:
             return supervised_loss(data_labels, pred_labels)
 
             # https://www.tensorflow.org/api_docs/python/tf/nn/softmax_cross_entropy_with_logits
-            # return tf.nn.sparse_softmax_cross_entropy_with_logits(data_labels, pred_labels)
+            # return tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(data_labels, pred_labels))
 
             # https://github.com/byeongjokim/ADDA
             # return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=pred_labels, labels=tf.ones_like(pred_labels)))
@@ -100,6 +100,7 @@ class Phase2Solver:
             staircase=True)
         # Defining the Target optimizer
         tgt_optimizer = tf.keras.optimizers.Adam(learning_rate=tgt_lr_schedule)
+
         # tgt_optimizer = tf.keras.optimizers.Adam(self.initial_learning_rate)
 
         @tf.function
@@ -128,8 +129,8 @@ class Phase2Solver:
             """
             # int32, float32 or int64?
             # Using int64 we can directly compare the labels with the argmax of the logits; no casting is needed
-            src_labels = tf.zeros(len(src_data), tf.int64)
-            tgt_labels = tf.ones(len(tgt_data), tf.int64)
+            src_labels = tf.zeros(len(src_features), tf.int64)
+            tgt_labels = tf.ones(len(tgt_features), tf.int64)
             concat_labels = tf.concat([src_labels, tgt_labels], 0)
 
             """
@@ -195,7 +196,7 @@ class Phase2Solver:
             Classifier performance evaluation: simply, the percentage of successfully predicted labels.
             argmax returns the index with the largest value across axes of a tensor (namely: the most confident 
             class prediction).
-            
+
             Remember that cls_preds == logits
             """
             cls_preds, _ = cls_model(src_features, training=False)
