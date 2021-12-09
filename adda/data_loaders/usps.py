@@ -54,8 +54,8 @@ class USPS:
             test_data = self._normalize(training_data)
 
         if zero_centre:
-            training_data = self._normalize(training_data)
-            test_data = self._normalize(training_data)
+            training_data = self._zero_centre(training_data)
+            test_data = self._zero_centre(training_data)
 
         # training_data.shape: (1800, 16, 16, 1)
         # Image dimensions: (16, 16, 1)
@@ -88,7 +88,7 @@ class USPS:
     @staticmethod
     def _normalize(data):
         """
-        Normalize in the the [0,1] range.
+        Normalize in the [0,1] range.
         """
         return data / 255
 
