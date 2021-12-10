@@ -33,8 +33,6 @@ class Phase2Solver:
         always be 0.0. Therefore, a cross-entropy of 0.0 when training a model indicates that the predicted class
         probabilities are identical to the probabilities in the training dataset, e.g. zero loss.
         """
-
-        # TODO.
         # supervised_loss = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
         supervised_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
@@ -90,8 +88,9 @@ class Phase2Solver:
             decay_rate=0.96,
             staircase=True)
         # Defining the Discriminator optimizer
-        disc_optimizer = tf.keras.optimizers.Adam(learning_rate=disc_lr_schedule)
-        # disc_optimizer = tf.keras.optimizers.Adam(self.initial_learning_rate)
+        # disc_optimizer = tf.keras.optimizers.Adam(learning_rate=disc_lr_schedule)
+        # disc_optimizer = tf.keras.optimizers.Adam(0.000001)
+        disc_optimizer = tf.keras.optimizers.Adam(self.initial_learning_rate)
 
         tgt_lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             self.initial_learning_rate,
@@ -99,14 +98,14 @@ class Phase2Solver:
             decay_rate=0.96,
             staircase=True)
         # Defining the Target optimizer
-        tgt_optimizer = tf.keras.optimizers.Adam(learning_rate=tgt_lr_schedule)
+        # tgt_optimizer = tf.keras.optimizers.Adam(learning_rate=tgt_lr_schedule)
+        tgt_optimizer = tf.keras.optimizers.Adam(self.initial_learning_rate)
 
-        # tgt_optimizer = tf.keras.optimizers.Adam(self.initial_learning_rate)
-
-        @tf.function
+        # @tf.function
         def train_step(src_data, tgt_data, orig_src_labels, orig_tgt_labels):
             """
-            Forward pass, loss calculation, backpropagation, metric updates.
+            During one step, the program is:
+                forward pass, loss calculation, backpropagation, metric updates.
 
             Fitting the models to the data batch.
             In this phase both models are used "as they are" (inference mode; training=False).
@@ -204,7 +203,7 @@ class Phase2Solver:
             src_cls_accuracy = tf.reduce_mean(tf.cast(cls_eq, tf.float32)) * 100
 
             cls_preds, _ = cls_model(tgt_features, training=False)
-            cls_eq = tf.equal(orig_src_labels, tf.argmax(cls_preds, -1))
+            cls_eq = tf.equal(orig_tgt_labels, tf.argmax(cls_preds, -1))
             tgt_cls_accuracy = tf.reduce_mean(tf.cast(cls_eq, tf.float32)) * 100
 
             cls_preds, _ = cls_model(concat_features, training=False)
@@ -233,14 +232,16 @@ class Phase2Solver:
             tgt_training_data = tgt_training_data[perm]
             tgt_training_labels = tgt_training_labels[perm]
 
-            # Adjust the fact that the datasets could be of different sizes, causing a not aligned batching
-            # Policy: always choose the smaller dataset as reference
+            # Adjust the fact that the datasets could be of different sizes, causing a not aligned batching.
+            # Policy: always choose the bigger dataset as reference point.
             src_len = len(src_training_data)
             tgt_len = len(tgt_training_data)
             if src_len > tgt_len:
-                training_len = tgt_len
-            else:
+                bigger_dataset = 'src'
                 training_len = src_len
+            else:
+                bigger_dataset = 'tgt'
+                training_len = tgt_len
 
             # With batch_size = 32, i = [0, 31, 63, ..]
             for i in range(0, training_len, self.batch_size):
@@ -253,18 +254,35 @@ class Phase2Solver:
 
                 # We've to deal with a batching issue.
                 # As defined in Tzeng's paper, from MNIST are sampled 2000 images, 1800 from USPS.
-                # The last batch has to be padded: we're going to use random data points to reach the exact batch size.
-                actual_batch_size = len(tgt_data)
-                if actual_batch_size < self.batch_size:
-                    residual_size = self.batch_size - actual_batch_size
+                # The last batches have to be padded using random data points.
 
-                    # Exactly get the first residual_size data points needed to complete the batch
-                    random_choice = np.random.choice(len(tgt_training_data), size=residual_size, replace=False)
-                    random_sample = tgt_training_data[random_choice]
-                    tgt_data = np.concatenate((tgt_data, random_sample))
-                    random_sample = tgt_training_labels[random_choice]
-                    tgt_labels = np.concatenate((tgt_labels, random_sample))
+                # Adjust the target dataset in relation to the source size
+                if bigger_dataset == 'src':
+                    actual_batch_size = len(tgt_data)
+                    if actual_batch_size < self.batch_size:
+                        residual_size = self.batch_size - actual_batch_size
 
+                        # Exactly get the first residual_size data points needed to complete the batch
+                        random_choice = np.random.choice(len(tgt_training_data), size=residual_size, replace=False)
+                        random_sample = tgt_training_data[random_choice]
+                        tgt_data = np.concatenate((tgt_data, random_sample))
+                        random_sample = tgt_training_labels[random_choice]
+                        tgt_labels = np.concatenate((tgt_labels, random_sample))
+
+                # Adjust the source dataset in relation to the target size
+                elif bigger_dataset == 'tgt':
+                    actual_batch_size = len(src_data)
+                    if actual_batch_size < self.batch_size:
+                        residual_size = self.batch_size - actual_batch_size
+
+                        # Exactly get the first residual_size data points needed to complete the batch
+                        random_choice = np.random.choice(len(src_training_data), size=residual_size, replace=False)
+                        random_sample = src_training_data[random_choice]
+                        src_data = np.concatenate((src_data, random_sample))
+                        random_sample = src_training_labels[random_choice]
+                        src_labels = np.concatenate((src_labels, random_sample))
+
+                # +1 every batch
                 global_step += 1
 
                 # Invoke the inner function train_step()
@@ -274,7 +292,7 @@ class Phase2Solver:
                 tgt_cls_accuracy_list.append(tgt_cls_accuracy.numpy())
                 src_cls_accuracy_list.append(src_cls_accuracy.numpy())
 
-                # Ongoing accuracy is shown every 50 steps.
+                # Ongoing accuracy is shown every 50 processed batches
                 if global_step % 50 == 0:
                     print('[{0}-{1:03}] batch_loss: {2:0.05}, batch_accuracy: {3:0.03}, tgt_loss: {4:0.05}, '
                           'src_cls_accuracy: {5:0.03}, tgt_cls_accuracy: {6:0.03}, concat_cls_accuracy: {7:0.03}'
@@ -286,9 +304,8 @@ class Phase2Solver:
                     print('src_cls_accuracy_mean: {0:0.03}'
                           .format(sum(src_cls_accuracy_list) / len(src_cls_accuracy_list)))
 
-                    # Updating the Discriminator learning rate accordingly with the optimizer criteria
+                    # Extracting the learning rate value from the optimizers
                     disc_lr = disc_optimizer._decayed_lr(tf.float32).numpy()
-                    # Updating the Discriminator learning rate accordingly with the optimizer criteria
                     tgt_lr = tgt_optimizer._decayed_lr(tf.float32).numpy()
 
                     wandb.log(
