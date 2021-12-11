@@ -1,17 +1,16 @@
 import tensorflow as tf
 import os
-import numpy as np
 
 from adda.settings import config as cfg
+from . import DataLoader
 
-SEED = 31337
 # As reported in Tzeng et al. paper, from the MNIST dataset are sampled 2000 images
 SAMPLE_SIZE = 2000
 # The number of classes in the MNIST dataset
 NUM_CLASSES = 10
 
 
-class MNIST:
+class MNIST(DataLoader):
     """
     Freely drawn from: https://github.com/marload/LeNet-keras/blob/master/data.py
 
@@ -22,13 +21,14 @@ class MNIST:
     It is also a container for the data, referenceable through its instance variables.
     """
 
-    def __init__(self, normalize=True, download=False, sample=True):
+    def __init__(self, sample=True, sample_size=0, normalize=True, download=False):
         """
         Params:
-            1. normalize:
-                should the [0,255] RGB values be normalized?
-            2. download:
-                should the dataset be automatically downloaded? If False, it'll be searched in MNIST_DATASET_PATH
+            1. sample: True/False (it'll be used SAMPLE_SIZE)
+            2. sample_size: should SAMPLE_SIZE be override by sample_size?
+            3. normalize: should the [0,255] RGB values be normalized?
+            4. download: should the dataset be automatically downloaded? If False, it'll be searched in
+                MNIST_DATASET_PATH
 
         Load training and test dataset
         Dataset dimensions:
@@ -63,27 +63,9 @@ class MNIST:
             test_data = test_data.reshape(test_data.shape[0], img_rows, img_cols, 1)
             input_shape = (img_rows, img_cols, 1)
 
-            """
-            # Fake data test
-            training_data = np.ones(shape=(60000, 32, 32, 3))
-            test_data = np.ones(shape=(10000, 32, 32, 3))
-            input_shape = (32, 32, 3)
-            """
-
         # Casting to 'float32' data type
         training_data = training_data.astype('float32')
         test_data = test_data.astype('float32')
-
-        if sample:
-            rand = np.random.RandomState(SEED)
-            perm = rand.permutation(len(training_data))[:SAMPLE_SIZE]
-            perm.sort()
-            training_data = training_data[perm]
-            training_labels = training_labels[perm]
-
-        if normalize:
-            training_data = self._normalize(training_data)
-            test_data = self._normalize(test_data)
 
         # Exposed instance variables
         self.input_shape = input_shape
@@ -91,25 +73,11 @@ class MNIST:
         self.training_data, self.training_labels = training_data, training_labels
         self.test_data, self.test_labels = test_data, test_labels
 
-    @staticmethod
-    def _normalize(data):
-        """
-        First we divide by 255, getting a value in the range [0,1]; then we subtract 0.5, obtaining a range [-0.5,+0.5].
-        The rough idea is to keep the data "near zero", compacting the computation range.
-        In particular, here we are imposing a mean equals to zero, in order to reduce the magnitude of the gradients
-        and, moreover, the computational effort during the NN training. With higher values the results are going
-        to be less accurate.
-        return (data / 255) - 0.5
-        """
+        if sample:
+            self.SAMPLE_SIZE = sample_size
+            if 0 < sample_size <= len(self.training_data):
+                self.SAMPLE_SIZE = sample_size
+            self._sample()
 
-        """"
-        Should we alternatively normalize the images in the [-1,1] range, as done in GAN@lab7 example?
-        return (data - 127.5) / 127.5
-        """
-
-        """
-        Otherwise, we could choose to normalize in the the [0,1] range, as in original Tzeng et al. ADDA implementation.
-        """
-        return data / 255
-
-
+        if normalize:
+            self._normalize()

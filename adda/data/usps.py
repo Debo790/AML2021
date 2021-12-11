@@ -1,16 +1,16 @@
 import gzip
 import numpy as np
-from skimage.transform import resize
 
 from adda.settings import config as cfg
+from . import DataLoader
 
-SEED = 31337
 # As reported in Tzeng et al. paper, from the USPS dataset are sampled 1800 images
 SAMPLE_SIZE = 1800
+# The number of classes in the USPS dataset
 NUM_CLASSES = 10
 
 
-class USPS:
+class USPS(DataLoader):
     """
     Freely drawn from:
         https://github.com/erictzeng/adda/blob/master/adda/data/usps.py
@@ -32,33 +32,23 @@ class USPS:
     It is also a container for the data, referenceable through its instance variables.
     """
 
-    def __init__(self, sample=True, normalize=True, resize28=True, zero_centre=True):
+    def __init__(self, sample=True, sample_size=0, normalize=True, resize28=True, zero_centre=True):
+        """
+        Params:
+            1. sample: True/False (it'll be used SAMPLE_SIZE)
+            2. sample_size: should SAMPLE_SIZE be override by sample_size?
+            3. normalize: should the [0,255] RGB values be normalized?
+            4. resize28: should the images be resized?
+            5. zero_centre
+        """
+
         # Training data
         training_data, training_labels = self._read_datafile(cfg.USPS_DATASET_TRAIN)
         # Test data
         test_data, test_labels = self._read_datafile(cfg.USPS_DATASET_TEST)
 
-        if sample:
-            rand = np.random.RandomState(SEED)
-            perm = rand.permutation(len(training_data))[:SAMPLE_SIZE]
-            perm.sort()
-            training_data = training_data[perm]
-            training_labels = training_labels[perm]
-
-        if resize28:
-            training_data = self._resize(training_data)
-            test_data = self._resize(test_data)
-
-        if normalize:
-            training_data = self._normalize(training_data)
-            test_data = self._normalize(training_data)
-
-        if zero_centre:
-            training_data = self._zero_centre(training_data)
-            test_data = self._zero_centre(training_data)
-
-        # training_data.shape: (1800, 16, 16, 1)
-        # Image dimensions: (16, 16, 1)
+        # training_data.shape: (7291, 16, 16, 1)
+        # Original image dimensions: (16, 16, 1)
         input_shape = training_data.shape[1:4]
 
         # Exposed instance variables
@@ -66,6 +56,23 @@ class USPS:
         self.num_classes = NUM_CLASSES
         self.training_data, self.training_labels = training_data, training_labels
         self.test_data, self.test_labels = test_data, test_labels
+        self.SAMPLE_SIZE = SAMPLE_SIZE
+
+        if sample:
+            self.SAMPLE_SIZE = sample_size
+            if 0 < sample_size <= len(self.training_data):
+                self.SAMPLE_SIZE = sample_size
+            self._sample()
+
+        if resize28:
+            self._resize(28, 28)
+            self.input_shape = self.training_data.shape[1:4]
+
+        if normalize:
+            self._normalize()
+
+        if zero_centre:
+            self._zero_centre()
 
     @staticmethod
     def _read_datafile(path):
@@ -84,24 +91,3 @@ class USPS:
         images = np.array(images, dtype=np.float32).reshape(-1, 16, 16, 1)
         images = (images + 1) / 2
         return images, labels
-
-    @staticmethod
-    def _normalize(data):
-        """
-        Normalize in the [0,1] range.
-        """
-        return data / 255
-
-    @staticmethod
-    def _resize(data):
-        """
-        Resize (16 x 16) images in (28 x 28) ones.
-        """
-        output = np.zeros((data.shape[0], 28, 28, 1), dtype=np.float32)
-        for i in range(data.shape[0]):
-            output[i, :, :, 0] = resize(data[i, :, :, 0], (28, 28), mode='constant')
-        return output
-
-    @staticmethod
-    def _zero_centre(data):
-        return data * 2.0 - 1.0
