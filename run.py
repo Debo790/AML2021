@@ -52,13 +52,16 @@ def main():
 
     args = parser.parse_args()
 
+    """
     if args.wandb == 'False' or args.mode in ['test', 'deploy']:
         # If you don't want your script to sync to the cloud
         # https://docs.wandb.ai/guides/track/advanced/environment-variables
         os.environ['WANDB_MODE'] = 'offline'
+    """
 
     # You need to edit settings/wandb_settings.py, specifying WANDB_ENTITY (username), WANDB_API_KEY
-    wandb.init(project='AML-ADDA', name='Phase ' + args.phase, group=args.mode)
+    wandb.init(project='AML-ADDA', name='Phase 2', group=args.mode)
+    # wandb.init(project='AML-ADDA', name='Phase ' + args.phase, group=args.mode)
     wandb.config.epochs = args.e
     wandb.config.batch_size = args.bs
 

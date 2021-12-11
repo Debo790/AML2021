@@ -65,7 +65,10 @@ def phase2_adaptation(batch_size, epochs):
     [...] we use the pre-trained source model as an intitialization for the target representation space and
     fix the source (typo: target?) model during adversarial training.
     """
-    tgt_model = src_model
+    # tgt_model = src_model
+    tgt_model = keras.models.load_model(cfg.SOURCE_MODEL_PATH, compile=False)
+    # tgt_model = LeNetEncoder(data_usps.input_shape)
+
     disc_model = Discriminator()
     cls_model = keras.models.load_model(cfg.CLASSIFIER_MODEL_PATH, compile=False)
 
@@ -98,9 +101,4 @@ def phase3_testing(batch_size, epochs):
 
     # Run the test
     solver.test(data.training_data, data.training_labels, cls_model, tgt_model)
-
-
-
-
-
 
