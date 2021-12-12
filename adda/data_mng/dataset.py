@@ -80,10 +80,14 @@ class Dataset:
 
     def pad_dataset(self, size, replace=False):
         """
-        Pad the dataset (data and labels) with 'size' random additional data points.
+        Pad the dataset (data and labels) with x random additional data points, reaching 'size'.
         Because of different dataset sample size, this method helps in dealing with a potential batching issue.
         """
-        rnd_choice = np.random.choice(len(self.data), size=size, replace=replace)
+        assert size > len(self.data), 'The requested target size is lower than the current one'
+
+        # The number of data points to add
+        pad_size = size - len(self.data)
+        rnd_choice = np.random.choice(len(self.data), size=pad_size, replace=replace)
 
         rnd_sample = self.data[rnd_choice]
         self.data = np.concatenate((self.data, rnd_sample))
@@ -93,9 +97,13 @@ class Dataset:
 
     def _pad_batch(self, data_batch, labels_batch, size, replace=False):
         """
-        Pad the batch (data and labels) with 'size' random additional data points.
+        Pad the batch (data and labels) with x random additional data points, reaching 'size'.
         """
-        rnd_choice = np.random.choice(len(self.data), size=size, replace=replace)
+        assert size > len(data_batch), 'The requested target size is lower than the current one'
+
+        # The number of data points to add
+        pad_size = size - len(data_batch)
+        rnd_choice = np.random.choice(len(self.data), size=pad_size, replace=replace)
 
         rnd_sample = self.data[rnd_choice]
         data_batch = np.concatenate((data_batch, rnd_sample))
@@ -106,7 +114,7 @@ class Dataset:
         return data_batch, labels_batch
 
     def is_batch_available(self):
-        return not self.pos > len(self.data)
+        return not self.pos >= len(self.data)
 
     def get_batch(self, padding=True):
         """
@@ -125,8 +133,7 @@ class Dataset:
 
         # Do we need to pad the current batch?
         if padding and len(data_batch) < bs:
-            padding_size = bs - len(data_batch)
-            data_batch, labels_batch = self._pad_batch(data_batch, labels_batch, padding_size)
+            data_batch, labels_batch = self._pad_batch(data_batch, labels_batch, bs)
 
         # Next batch position: it could exceed the data length
         self.pos = i + bs
@@ -141,3 +148,6 @@ class Dataset:
 
     def get_pos(self):
         return self.pos
+
+    def get_size(self):
+        return len(self.data)

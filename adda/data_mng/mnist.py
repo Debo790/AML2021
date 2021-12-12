@@ -74,9 +74,10 @@ class MNIST(DataLoader):
         self.test_data, self.test_labels = test_data, test_labels
 
         if sample:
-            self.SAMPLE_SIZE = sample_size
             if 0 < sample_size <= len(self.training_data):
                 self.SAMPLE_SIZE = sample_size
+            else:
+                self.SAMPLE_SIZE = SAMPLE_SIZE
             self._sample()
 
         if normalize:

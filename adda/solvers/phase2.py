@@ -2,6 +2,8 @@ import tensorflow as tf
 import random
 import numpy as np
 import wandb
+
+from adda.data_mng import Dataset
 from adda.settings import config
 
 
@@ -18,8 +20,7 @@ class Phase2Solver:
         self.batch_size = batch_size
         self.initial_learning_rate = ilr
 
-    def train(self, src_training_data, src_training_labels, tgt_training_data, tgt_training_labels,
-              src_model, tgt_model, disc_model, cls_model):
+    def train(self, src_training_ds: Dataset, tgt_training_ds: Dataset, src_model, tgt_model, disc_model, cls_model):
 
         """
         From TensorFlow documentation:
@@ -101,7 +102,7 @@ class Phase2Solver:
         # tgt_optimizer = tf.keras.optimizers.Adam(learning_rate=tgt_lr_schedule)
         tgt_optimizer = tf.keras.optimizers.Adam(self.initial_learning_rate)
 
-        # @tf.function
+        @tf.function
         def train_step(src_data, tgt_data, orig_src_labels, orig_tgt_labels):
             """
             During one step, the program is:
@@ -220,74 +221,25 @@ class Phase2Solver:
         # External for loop: one iteration for each epoch.
         for e in range(self.epochs):
 
-            # Source training set shuffling
-            perm = np.arange(len(src_training_data))
-            random.shuffle(perm)
-            src_training_data = src_training_data[perm]
-            src_training_labels = src_training_labels[perm]
+            # Reset the iterator position
+            src_training_ds.reset_pos()
+            tgt_training_ds.reset_pos()
 
-            # Target training set shuffling
-            perm = np.arange(len(tgt_training_data))
-            random.shuffle(perm)
-            tgt_training_data = tgt_training_data[perm]
-            tgt_training_labels = tgt_training_labels[perm]
+            # Shuffling the training set
+            src_training_ds.shuffle()
+            tgt_training_ds.shuffle()
 
-            # Adjust the fact that the datasets could be of different sizes, causing a not aligned batching.
-            # Policy: always choose the bigger dataset as reference point.
-            src_len = len(src_training_data)
-            tgt_len = len(tgt_training_data)
-            if src_len > tgt_len:
-                bigger_dataset = 'src'
-                training_len = src_len
-            else:
-                bigger_dataset = 'tgt'
-                training_len = tgt_len
-
-            # With batch_size = 32, i = [0, 31, 63, ..]
-            for i in range(0, training_len, self.batch_size):
-
-                # Slicing the data and the labels (both: source and target), generating a batch of size batch_size
-                src_data = src_training_data[i:i + self.batch_size, :]
-                tgt_data = tgt_training_data[i:i + self.batch_size, :]
-                src_labels = src_training_labels[i:i + self.batch_size, ].astype('int64')
-                tgt_labels = tgt_training_labels[i:i + self.batch_size, ].astype('int64')
-
-                # We've to deal with a batching issue.
-                # As defined in Tzeng's paper, from MNIST are sampled 2000 images, 1800 from USPS.
-                # The last batches have to be padded using random data points.
-
-                # Adjust the target dataset in relation to the source size
-                if bigger_dataset == 'src':
-                    actual_batch_size = len(tgt_data)
-                    if actual_batch_size < self.batch_size:
-                        residual_size = self.batch_size - actual_batch_size
-
-                        # Exactly get the first residual_size data points needed to complete the batch
-                        random_choice = np.random.choice(len(tgt_training_data), size=residual_size, replace=False)
-                        random_sample = tgt_training_data[random_choice]
-                        tgt_data = np.concatenate((tgt_data, random_sample))
-                        random_sample = tgt_training_labels[random_choice]
-                        tgt_labels = np.concatenate((tgt_labels, random_sample))
-
-                # Adjust the source dataset in relation to the target size
-                elif bigger_dataset == 'tgt':
-                    actual_batch_size = len(src_data)
-                    if actual_batch_size < self.batch_size:
-                        residual_size = self.batch_size - actual_batch_size
-
-                        # Exactly get the first residual_size data points needed to complete the batch
-                        random_choice = np.random.choice(len(src_training_data), size=residual_size, replace=False)
-                        random_sample = src_training_data[random_choice]
-                        src_data = np.concatenate((src_data, random_sample))
-                        random_sample = src_training_labels[random_choice]
-                        src_labels = np.concatenate((src_labels, random_sample))
+            while src_training_ds.is_batch_available() and tgt_training_ds.is_batch_available():
+                # Get a data batch (data and labels) composed by batch_size data points
+                src_data_b, src_labels_b = src_training_ds.get_batch()
+                tgt_data_b, tgt_labels_b = tgt_training_ds.get_batch()
 
                 # +1 every batch
                 global_step += 1
 
                 # Invoke the inner function train_step()
                 disc_loss, disc_accuracy, tgt_loss, src_cls_accuracy, tgt_cls_accuracy, concat_cls_accuracy = \
-                    train_step(src_data, tgt_data, src_labels, tgt_labels)
+                    train_step(src_data_b, tgt_data_b, src_labels_b, tgt_labels_b)
 
                 tgt_cls_accuracy_list.append(tgt_cls_accuracy.numpy())
                 src_cls_accuracy_list.append(src_cls_accuracy.numpy())

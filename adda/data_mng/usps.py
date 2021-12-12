@@ -59,9 +59,10 @@ class USPS(DataLoader):
         self.SAMPLE_SIZE = SAMPLE_SIZE
 
         if sample:
-            self.SAMPLE_SIZE = sample_size
             if 0 < sample_size <= len(self.training_data):
                 self.SAMPLE_SIZE = sample_size
+            else:
+                self.SAMPLE_SIZE = SAMPLE_SIZE
             self._sample()
 
         if resize28:

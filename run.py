@@ -9,6 +9,7 @@ functions from adda.app package.
 
 import os
 import argparse
+
 import wandb
 import cpuinfo
 import tensorflow as tf
@@ -52,12 +53,10 @@ def main():
 
     args = parser.parse_args()
 
-    """
     if args.wandb == 'False' or args.mode in ['test', 'deploy']:
         # If you don't want your script to sync to the cloud
         # https://docs.wandb.ai/guides/track/advanced/environment-variables
         os.environ['WANDB_MODE'] = 'offline'
-    """
 
     # You need to edit settings/wandb_settings.py, specifying WANDB_ENTITY (username), WANDB_API_KEY
     wandb.init(project='AML-ADDA', name='Phase 2', group=args.mode)
@@ -68,10 +67,10 @@ def main():
     # In the case you'd like to bypass the args parser:
     # app.phase1_training(epochs=10, batch_size=32)
     # app.phase1_test(epochs=10, batch_size=32)
-    app.phase2_adaptation(epochs=100, batch_size=32)
+    app.phase2_adaptation(epochs=30, batch_size=32)
     # app.phase3_testing(epochs=10, batch_size=32)
     # arch.show_model_arch('LeNetClassifier', plot=True)
-    # exit()
+    # data_test.test()
 
     if args.model_arch:
         arch.show_model_arch(args.model_arch, plot=False)
