@@ -1,7 +1,7 @@
 import tensorflow as tf
-import random
-import numpy as np
 import wandb
+
+from data_mng import Dataset
 from adda.settings import config
 
 
@@ -38,7 +38,7 @@ class Phase1Solver:
         self.batch_size = batch_size
         self.initial_learning_rate = ilr
 
-    def train(self, training_data, training_labels, test_data, test_labels, model):
+    def train(self, training_ds: Dataset, test_ds: Dataset, model):
         """
         Cross-entropy loss measures the performance of a classification model whose output is a probability value
         between 0 and 1.
@@ -122,57 +122,37 @@ class Phase1Solver:
         # External for loop: one iteration for each epoch.
         for e in range(self.epochs):
 
-            """
-            Shuffling training set.
-        
-            Why? Because we loaded the data in an ordered fashion, so we'd like to randomize the batches,
-            having data points coming from different classes (for each epoch).
-            So, variability is good for training. More than having a lot of data, it's important to have
-            different data.
-            """
-            perm = np.arange(len(training_labels))
-            random.shuffle(perm)
-            training_data = training_data[perm]
-            training_labels = training_labels[perm]
+            # Reset the iterator position
+            training_ds.reset_pos()
+            # Shuffling the training set
+            training_ds.shuffle()
 
-            # Iteration
-            # For each batch size step (0, 31, 63, ..)
-            for i in range(0, len(training_labels), self.batch_size):
-                # Slicing the data and the labels
-                data = training_data[i:i + self.batch_size, :]
-                labels = training_labels[i:i + self.batch_size, ].astype('int64')
+            while training_ds.is_batch_available():
+                # Get a data batch (data and labels) composed by batch_size data points
+                data_b, labels_b = training_ds.get_batch()
                 global_step += 1
 
                 # Invoke the inner function train_step()
-                batch_loss, batch_accuracy = train_step(data, labels)
+                batch_loss, batch_accuracy = train_step(data_b, labels_b)
 
                 # The on going accuracy are shown every 50 steps.
                 if global_step % 50 == 0:
                     print('[{0}-{1:03}] loss: {2:0.05}, batch_accuracy: {3:0.03}'
                           .format(e + 1, global_step, batch_loss.numpy(), batch_accuracy.numpy()))
 
-                    print(batch_loss.numpy())
-                    print(batch_accuracy.numpy())
-
-                    exit()
-
-                    # Updating the learning rate accordingly with the optimizer criteria
-                    lr = optimizer._decayed_lr(tf.float32).numpy()
-
-                    wandb.log({
-                        'Phase1 (training) / batch_loss': batch_loss,
-                        'Phase1 (training) / batch_accuracy': batch_accuracy,
-                        'Phase1 (training) / learning_rate': lr
-                    })
+                lr = optimizer._decayed_lr(tf.float32).numpy()
+                wandb.log({
+                    'train/batch_loss': batch_loss,
+                    'train/batch_accuracy': batch_accuracy,
+                    'train/learning_rate': lr
+                })
 
                 if global_step == 1:
                     print('Number of model parameters {}'.format(model.count_params()))
 
-            """
-            TEST phase
-            Perform test on test set to evaluate the method on unseen data
-            """
-            loss, test_accuracy, test_preds = self.test(test_data, test_labels, model, loss_function)
+            # TEST phase (at the end of each epoch).
+            # Perform test on test set to evaluate the model on unseen data.
+            loss, test_accuracy, test_preds = self.test(test_ds, model)
 
             # Save the model if the results are better than the previous trained model.
             if test_accuracy > best_accuracy:
@@ -187,15 +167,14 @@ class Phase1Solver:
                   .format(e + 1, self.epochs, loss.numpy(), test_accuracy.numpy(), best_accuracy))
 
             wandb.log({
-                'Phase1 (test) / loss': loss,
-                'Phase1 (test) / accuracy': test_accuracy,
-                'Phase1 (test) / best_accuracy': best_accuracy,
-                'epoch': e + 1
+                'test/loss': loss,
+                'test/accuracy': test_accuracy,
+                'test/best_accuracy': best_accuracy,
+                'test/epoch': e + 1
             })
 
-    def test(self, test_data, test_labels, model, loss_function=None):
-        if not loss_function:
-            loss_function = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    def test(self, test_ds: Dataset, model):
+        loss_function = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
         # Single test step: use the model in inference mode to generate predictions on unseen test data
         @tf.function
@@ -205,29 +184,31 @@ class Phase1Solver:
             return loss, logits, preds
 
         # Initialize global containers to store the batch-by-batch results
-        test_preds = tf.zeros((0,), dtype=tf.int64)
+        whole_preds = tf.zeros((0,), dtype=tf.int64)
         total_loss = list()
 
-        # Forward pass using the whole test dataset, batch by batch
-        for i in range(0, len(test_labels), self.batch_size):
-            # Slicing the data and the labels
-            data = test_data[i:i + self.batch_size, :]
-            labels = test_labels[i:i + self.batch_size, ].astype('int64')
+        # Reset the iterator position
+        test_ds.reset_pos()
 
-            batch_loss, _, preds = test_step(data, labels)
+        # Forward pass using the whole test dataset, batch by batch
+        while test_ds.is_batch_available():
+            # Get a data batch (data and labels) composed by batch_size data points
+            data_b, labels_b = test_ds.get_batch(padding=False)
+            # Invoke the inner function test_step()
+            batch_loss, _, preds = test_step(data_b, labels_b)
 
             # Extract the most confident class prediction (highest probability)
             batch_preds = tf.argmax(preds, -1)
-            test_preds = tf.concat([test_preds, batch_preds], axis=0)
+            whole_preds = tf.concat([whole_preds, batch_preds], axis=0)
             total_loss.append(batch_loss)
 
         loss = sum(total_loss) / len(total_loss)
         # Calculate the number of correctly predicted labels, aggregating the whole batches
-        eq = tf.equal(test_labels, test_preds)
-        # Calculate the the percentage of successfully predicted labels.
+        eq = tf.equal(test_ds.labels, whole_preds)
+        # Calculate the percentage of successfully predicted labels.
         test_accuracy = tf.reduce_mean(tf.cast(eq, tf.float32)) * 100
 
         print('Loss: {0:0.05}, test accuracy: {1:0.03}'
               .format(loss.numpy(), test_accuracy.numpy()))
 
-        return loss, test_accuracy, test_preds
+        return loss, test_accuracy, whole_preds
