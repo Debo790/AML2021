@@ -58,7 +58,3 @@ class DataLoader:
         for i in range(self.test_data.shape[0]):
             output[i, :, :, 0] = skimage_resize(self.test_data[i, :, :, 0], (x, y), mode='constant')
         self.test_data = output
-
-    def _zero_centre(self):
-        self.training_data = self.training_data * 2.0 - 1.0
-        self.test_data = self.test_data * 2.0 - 1.0

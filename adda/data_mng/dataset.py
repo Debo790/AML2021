@@ -12,16 +12,11 @@ class Dataset:
     def __init__(self, dataset, data_type, sample=True, sample_size=0, batch_size=32):
         """
         Params:
-            1. dataset:
-                a string containing one of the following: MNIST, USPS, SVHN
-            2. data_type:
-                training or test
-            3. sample:
-                as defined in Tzeng's paper, from MNIST are sampled 2000 images, 1800 from USPS.
-            4. sample_size:
-                should the built-in SAMPLE_SIZE be override by a user-defined value?
-            4. batch_size:
-                slicing size during the batching procedure
+            1. dataset: a string containing one of the following: MNIST, USPS, SVHN
+            2. data_type: training or test
+            3. sample: as defined in Tzeng's paper, from MNIST are sampled 2000 images, 1800 from USPS.
+            4. sample_size: should the built-in SAMPLE_SIZE be override by a user-defined value?
+            4. batch_size: slicing size during the batching procedure
         """
         assert dataset in ('MNIST', 'USPS', 'SVHN'), 'Dataset not found'
 
@@ -31,8 +26,7 @@ class Dataset:
 
         elif dataset == 'USPS':
             from .usps import USPS
-            self.data_obj = USPS(sample=sample, sample_size=sample_size, normalize=True, resize28=True,
-                                 zero_centre=True)
+            self.data_obj = USPS(sample=sample, sample_size=sample_size, normalize=True, resize28=True)
 
         elif dataset == 'SVHN':
             pass

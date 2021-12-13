@@ -32,14 +32,13 @@ class USPS(DataLoader):
     It is also a container for the data, referenceable through its instance variables.
     """
 
-    def __init__(self, sample=True, sample_size=0, normalize=True, resize28=True, zero_centre=True):
+    def __init__(self, sample=True, sample_size=0, normalize=True, resize28=True):
         """
         Params:
             1. sample: True/False (it'll be used SAMPLE_SIZE)
             2. sample_size: should SAMPLE_SIZE be override by sample_size?
             3. normalize: should the [0,255] RGB values be normalized?
             4. resize28: should the images be resized?
-            5. zero_centre
         """
 
         # Training data
@@ -71,9 +70,6 @@ class USPS(DataLoader):
 
         if normalize:
             self._normalize()
-
-        if zero_centre:
-            self._zero_centre()
 
     @staticmethod
     def _read_datafile(path):
