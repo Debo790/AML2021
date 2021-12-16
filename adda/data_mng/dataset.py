@@ -29,7 +29,8 @@ class Dataset:
             self.data_obj = USPS(sample=sample, sample_size=sample_size, normalize=True, resize28=True)
 
         elif dataset == 'SVHN':
-            pass
+            from .svhn import SVHN
+            self.data_obj = SVHN(sample=True, sample_size=sample_size, normalize=True, resize28=True, download=False)
 
         self.dataset_name = dataset
 

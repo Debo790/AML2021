@@ -29,6 +29,17 @@ def gpu_check():
         CPU_brand = cpuinfo.get_cpu_info()['brand_raw']
         print(f'No GPU found, let\'s use CPU: {CPU_brand}')
         os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        try:
+            # Currently, memory growth needs to be the same across GPUs
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            logical_gpus = tf.config.list_logical_devices('GPU')
+            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+        except RuntimeError as e:
+            # Memory growth must be set before GPUs have been initialized
+            print(e)
 
 
 def main():
@@ -65,9 +76,9 @@ def main():
     wandb.config.batch_size = args.bs
 
     # In the case you'd like to bypass the args parser:
-    # app.phase1_training(epochs=10, batch_size=32)
+    app.phase1_training(epochs=10, batch_size=32)
     # app.phase1_test(epochs=10, batch_size=32)
-    app.phase2_adaptation(epochs=30, batch_size=32)
+    # app.phase2_adaptation(epochs=30, batch_size=32)
     # app.phase3_testing(epochs=10, batch_size=32)
     # arch.show_model_arch('LeNetClassifier', plot=True)
     # data_test.test()

@@ -1,0 +1,8 @@
+numpy
+tensorflow
+pandas
+tqdm
+scipy
+scikit-image
+py-cpuinfo
+wandb
