@@ -8,7 +8,6 @@ import os
 
 
 URL = "http://ufldl.stanford.edu/housenumbers/"
-SEED = 31337
 SAMPLE_SIZE = 2000
 # The number of classes in the SVHN dataset
 NUM_CLASSES = 10
@@ -33,15 +32,8 @@ class SVHN(DataLoader):
     
     def __init__(self, sample=True, sample_size=0, normalize=True, resize28=True, download=False):
 
-        if download:
-            training_data, training_labels = self.load_data(type="normal", part="train")
-            test_data, test_labels = self.load_data(type="normal", part="test")
-        else:
-            assert os.path.isfile(cfg.SVHN_DATASET_TRAIN_MAT), "SVHN train local not found."
-            training_data, training_labels = self.load_data(type="normal", part="train")
-            assert os.path.isfile(cfg.SVHN_DATASET_TEST_MAT), "SVHN test local not found."
-            test_data, test_labels = self.load_data(type="normal", part="test")
-
+        training_data, training_labels = self.load_data(type="normal", part="train", download=download)
+        test_data, test_labels = self.load_data(type="normal", part="test", download=download)
 
         # np.shape(training_data): (26032, 32, 32, 3)
         # Original image dimensions: (32, 32, 3)
@@ -66,8 +58,8 @@ class SVHN(DataLoader):
         if normalize:
             self._normalize()
 
-    
-    def load_data(path="svhn_matlab.npz", type="normal", part="train"):
+
+    def load_data(path="svhn_matlab.npz", type="normal", part="train", download=False):
 
         """Loads the SVHN dataset if not already downloaded.
         # Arguments
@@ -81,12 +73,20 @@ class SVHN(DataLoader):
         Drawn from Tzeng implementation and https://github.com/machinecurve/extra_keras_datasets/blob/master/extra_keras_datasets/svhn.py
         """
 
-        if part=="train":
-            dataPath = get_file("{}_train".format(path), origin="{}train_32x32.mat".format(URL))
-        else:
-            if part=="test":
-                dataPath = get_file("{}_test".format(path), origin="{}test_32x32.mat".format(URL))
-        
+        if download:
+
+            if part=="train":
+                dataPath = get_file("{}_train".format(path), origin="{}train_32x32.mat".format(URL))
+            else:
+                if part=="test":
+                    dataPath = get_file("{}_test".format(path), origin="{}test_32x32.mat".format(URL))
+            
+        else: 
+            if part=="train":
+                dataPath = cfg.SVHN_DATASET_TRAIN_MAT
+            elif part=="test":
+                    dataPath = cfg.SVHN_DATASET_TEST_MAT
+
         data = loadmat(dataPath)
         
         # Images are stored in X, labels in y
