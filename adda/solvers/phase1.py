@@ -1,7 +1,7 @@
 import tensorflow as tf
 import wandb
 
-from data_mng import Dataset
+from adda.data_mng import Dataset
 from adda.settings import config
 
 
@@ -158,10 +158,13 @@ class Phase1Solver:
             if test_accuracy > best_accuracy:
                 best_accuracy = test_accuracy
                 # Persistently save both models (LeNetEncoder and LeNetClassifier)
-                model.layers[0].save(config.SOURCE_MODEL_PATH)
+                #model.layers[0].save(config.SOURCE_MODEL_PATH)
+                #model.layers[1].save(config.CLASSIFIER_MODEL_PATH)
+                model.layers[0].save(training_ds.sourceModelPath)
                 model.layers[1].save(config.CLASSIFIER_MODEL_PATH)
                 # Save the whole model, too
-                model.save(config.PHASE1_MODEL_PATH)
+                #model.save(config.PHASE1_MODEL_PATH)
+                model.save(training_ds.phase1ModelPath)
 
             print('End of Epoch {0}/{1:03} -> loss: {2:0.05}, test accuracy: {3:0.03} - best accuracy: {4:0.03}'
                   .format(e + 1, self.epochs, loss.numpy(), test_accuracy.numpy(), best_accuracy))

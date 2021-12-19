@@ -23,14 +23,23 @@ class Dataset:
         if dataset == 'MNIST':
             from .mnist import MNIST
             self.data_obj = MNIST(sample=sample, sample_size=sample_size, normalize=True, download=False)
+            self.sourceModelPath = cfg.SOURCE_MODEL_PATH_MNIST
+            self.phase1ModelPath = cfg.PHASE1_MODEL_PATH_MNIST
+            self.targetModelPath = cfg.TARGET_MODEL_PATH_MNIST
 
         elif dataset == 'USPS':
             from .usps import USPS
             self.data_obj = USPS(sample=sample, sample_size=sample_size, normalize=True, resize28=True)
+            self.sourceModelPath = cfg.SOURCE_MODEL_PATH_USPS
+            self.phase1ModelPath = cfg.PHASE1_MODEL_PATH_USPS
+            self.targetModelPath = cfg.TARGET_MODEL_PATH_USPS
 
         elif dataset == 'SVHN':
             from .svhn import SVHN
             self.data_obj = SVHN(sample=True, sample_size=sample_size, normalize=True, resize28=True, download=False)
+            self.sourceModelPath = cfg.SOURCE_MODEL_PATH_SVHN
+            self.phase1ModelPath = cfg.PHASE1_MODEL_PATH_SVHN
+            self.targetModelPath = cfg.TARGET_MODEL_PATH_SVHN
 
         self.dataset_name = dataset
 

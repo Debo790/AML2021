@@ -70,15 +70,15 @@ def main():
         os.environ['WANDB_MODE'] = 'offline'
 
     # You need to edit settings/wandb_settings.py, specifying WANDB_ENTITY (username), WANDB_API_KEY
-    wandb.init(project='AML-ADDA', name='Phase 2', group=args.mode)
+    wandb.init(project='AML-ADDA', name='Phase 1', group=args.mode, entity="aml2021")
     # wandb.init(project='AML-ADDA', name='Phase ' + args.phase, group=args.mode)
     wandb.config.epochs = args.e
     wandb.config.batch_size = args.bs
 
     # In the case you'd like to bypass the args parser:
-    app.phase1_training(epochs=10, batch_size=32)
-    # app.phase1_test(epochs=10, batch_size=32)
-    # app.phase2_adaptation(epochs=30, batch_size=32)
+    app.phase1_training(epochs=50, batch_size=32)
+    app.phase1_test(epochs=10, batch_size=32)
+    app.phase2_adaptation(epochs=50, batch_size=32)
     # app.phase3_testing(epochs=10, batch_size=32)
     # arch.show_model_arch('LeNetClassifier', plot=True)
     # data_test.test()

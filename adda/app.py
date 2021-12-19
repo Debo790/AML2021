@@ -1,11 +1,11 @@
+from adda.data_mng.dataset import Dataset
 from tensorflow import keras
 
-from data_mng import Dataset
 from adda.models import LeNetEncoder, LeNetClassifier, Phase1Model, Discriminator
 from adda.solvers import Phase1Solver, Phase2Solver, Phase3Solver
 
 from adda.settings import config as cfg
-
+from adda.settings import switcher as sw
 
 def phase1_training(batch_size, epochs):
     """
@@ -15,8 +15,8 @@ def phase1_training(batch_size, epochs):
     "We first pre-train a source encoder CNN using labeled source image examples." (Tzeng et al., 2017)
     """
     # Load the dataset. We're interested in the whole dataset.
-    training_ds = Dataset('MNIST', 'training', sample=False, batch_size=batch_size)
-    test_ds = Dataset('MNIST', 'test', sample=False, batch_size=batch_size)
+    training_ds = Dataset('SVHN', 'training', sample=False, batch_size=batch_size)
+    test_ds = Dataset('SVHN', 'test', sample=False, batch_size=batch_size)
 
     # Load and initialize the model (composed by: encoder + classifier)
     model = Phase1Model(training_ds.get_input_shape(), training_ds.get_num_classes())
@@ -36,16 +36,16 @@ def phase1_test(batch_size, epochs):
     Testing the test dataset using the Phase1 saved model.
     """
     # Load the dataset. We're interested in the whole dataset.
-    test_ds = Dataset('MNIST', 'test', sample=False, batch_size=batch_size)
-
+    test_ds = Dataset('SVHN', 'test', sample=False, batch_size=batch_size)
+    
     # Load the trained model
-    model = keras.models.load_model(cfg.PHASE1_MODEL_PATH, compile=False)
-
+    model = keras.models.load_model(test_ds.phase1ModelPath, compile=False)
+    
     # Instantiate the solver
     solver = Phase1Solver(batch_size, epochs)
 
     # Run the test
-    solver.train(test_ds, model)
+    solver.test(test_ds, model)
 
 
 def phase2_adaptation(batch_size, epochs):
@@ -56,8 +56,8 @@ def phase2_adaptation(batch_size, epochs):
     target examples cannot reliably predict their domain label." (Tzeng et al., 2017)
     """
     # Load the datasets
-    src_training_ds = Dataset('MNIST', 'training', sample=True, batch_size=batch_size)
-    tgt_training_ds = Dataset('USPS', 'training', sample=True, batch_size=batch_size)
+    src_training_ds = Dataset('SVHN', 'training', sample=True, batch_size=batch_size)
+    tgt_training_ds = Dataset('MNIST', 'training', sample=True, batch_size=batch_size)
 
     # Deal with the fact that the datasets could be of different sizes, causing a not aligned batching.
     # Policy: always choose the bigger dataset as reference point, padding the smaller one.
@@ -69,13 +69,14 @@ def phase2_adaptation(batch_size, epochs):
     elif tgt_size > src_size:
         src_training_ds.pad_dataset(tgt_size)
 
-    src_model = keras.models.load_model(cfg.SOURCE_MODEL_PATH, compile=False)
+
+    src_model = keras.models.load_model(src_training_ds.sourceModelPath, compile=False)
     """
     As we can read in Tzeng. et al's paper:
     [...] we use the pre-trained source model as an intitialization for the target representation space and
     fix the source (typo: target?) model during adversarial training.
     """
-    tgt_model = keras.models.load_model(cfg.SOURCE_MODEL_PATH, compile=False)
+    tgt_model = keras.models.load_model(src_training_ds.sourceModelPath, compile=False)
     # tgt_model = LeNetEncoder(data_usps.input_shape)
 
     disc_model = Discriminator()

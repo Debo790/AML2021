@@ -73,6 +73,9 @@ class SVHN(DataLoader):
         Drawn from Tzeng implementation and https://github.com/machinecurve/extra_keras_datasets/blob/master/extra_keras_datasets/svhn.py
         """
 
+        assert os.path.isfile(cfg.SVHN_DATASET_TRAIN_MAT), "SVHN train local file not found."
+        assert os.path.isfile(cfg.SVHN_DATASET_TEST_MAT), "SVHN test local file not found."
+
         if download:
 
             if part=="train":
