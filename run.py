@@ -67,19 +67,23 @@ def main():
     if args.wandb == 'False' or args.mode in ['test', 'deploy']:
         # If you don't want your script to sync to the cloud
         # https://docs.wandb.ai/guides/track/advanced/environment-variables
-        os.environ['WANDB_MODE'] = 'offline'
+        os.environ['WANDB_MODE'] = 'online'
 
     # You need to edit settings/wandb_settings.py, specifying WANDB_ENTITY (username), WANDB_API_KEY
-    wandb.init(project='AML-ADDA', name='Phase 1', group=args.mode, entity="aml2021")
+    wandb.init(project='AML-ADDA', name='USPS -> MNIST: phase 1+2', group=args.mode, entity="aml2021")
     # wandb.init(project='AML-ADDA', name='Phase ' + args.phase, group=args.mode)
     wandb.config.epochs = args.e
     wandb.config.batch_size = args.bs
 
+    # Specificy source datasets and target datasets for this run
+    source_ds = 'USPS'
+    target_ds = 'MNIST'
+
     # In the case you'd like to bypass the args parser:
-    app.phase1_training(epochs=50, batch_size=32)
-    app.phase1_test(epochs=10, batch_size=32)
-    app.phase2_adaptation(epochs=50, batch_size=32)
-    # app.phase3_testing(epochs=10, batch_size=32)
+    app.phase1_training(epochs=20, batch_size=32, source=source_ds)
+    app.phase1_test(epochs=10, batch_size=32, source=source_ds)
+    app.phase2_adaptation(epochs=50, batch_size=32, source=source_ds, target=target_ds)
+    # app.phase3_testing(epochs=10, batch_size=32, target=target_ds)
     # arch.show_model_arch('LeNetClassifier', plot=True)
     # data_test.test()
 
