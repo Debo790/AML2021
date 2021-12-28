@@ -17,7 +17,7 @@ class Phase1Solver:
     "We first pre-train a source encoder CNN using labeled source image examples." (Tzeng et al., 2017)
     """
 
-    def __init__(self, batch_size, epochs, ilr=0.0001):
+    def __init__(self, batch_size, epochs=10, ilr=0.0001):
         """
         1. batch_size:
             A batch size of 32 means that 32 samples from the training dataset will be used to estimate the error
@@ -161,7 +161,7 @@ class Phase1Solver:
                 #model.layers[0].save(config.SOURCE_MODEL_PATH)
                 #model.layers[1].save(config.CLASSIFIER_MODEL_PATH)
                 model.layers[0].save(training_ds.sourceModelPath)
-                model.layers[1].save(config.CLASSIFIER_MODEL_PATH)
+                model.layers[1].save(training_ds.classifierPath)
                 # Save the whole model, too
                 #model.save(config.PHASE1_MODEL_PATH)
                 model.save(training_ds.phase1ModelPath)

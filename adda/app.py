@@ -27,7 +27,7 @@ def phase1_training(batch_size, epochs, source):
     solver.train(training_ds, test_ds, model)
 
 
-def phase1_test(batch_size, epochs, source):
+def phase1_test(batch_size, source, target):
     """
     Phase 1: Pre-training.
     Test.
@@ -35,13 +35,14 @@ def phase1_test(batch_size, epochs, source):
     Testing the test dataset using the Phase1 saved model.
     """
     # Load the dataset. We're interested in the whole dataset.
-    test_ds = Dataset(source, 'test', sample=False, batch_size=batch_size)
+    train_ds = Dataset(source, 'training', sample=False, batch_size=batch_size)
+    test_ds = Dataset(target, 'test', sample=False, batch_size=batch_size)
     
     # Load the trained model
-    model = keras.models.load_model(test_ds.phase1ModelPath, compile=False)
+    model = keras.models.load_model(train_ds.phase1ModelPath, compile=False)
     
     # Instantiate the solver
-    solver = Phase1Solver(batch_size, epochs)
+    solver = Phase1Solver(batch_size)
 
     # Run the test
     solver.test(test_ds, model)
@@ -79,7 +80,7 @@ def phase2_adaptation(batch_size, epochs, source, target):
     # tgt_model = LeNetEncoder(data_usps.input_shape)
 
     disc_model = Discriminator()
-    cls_model = keras.models.load_model(cfg.CLASSIFIER_MODEL_PATH, compile=False)
+    cls_model = keras.models.load_model(src_training_ds.classifierPath, compile=False)
 
     # Instantiate the solver
     solver = Phase2Solver(batch_size, epochs)
