@@ -26,6 +26,7 @@ class Dataset:
             self.sourceModelPath = cfg.SOURCE_MODEL_PATH_MNIST
             self.phase1ModelPath = cfg.PHASE1_MODEL_PATH_MNIST
             self.targetModelPath = cfg.TARGET_MODEL_PATH_MNIST
+            self.classifierPath = cfg.CLASSIFIER_MODEL_PATH_MNIST
 
         elif dataset == 'USPS':
             from .usps import USPS
@@ -33,6 +34,7 @@ class Dataset:
             self.sourceModelPath = cfg.SOURCE_MODEL_PATH_USPS
             self.phase1ModelPath = cfg.PHASE1_MODEL_PATH_USPS
             self.targetModelPath = cfg.TARGET_MODEL_PATH_USPS
+            self.classifierPath = cfg.CLASSIFIER_MODEL_PATH_USPS
 
         elif dataset == 'SVHN':
             from .svhn import SVHN
@@ -40,6 +42,7 @@ class Dataset:
             self.sourceModelPath = cfg.SOURCE_MODEL_PATH_SVHN
             self.phase1ModelPath = cfg.PHASE1_MODEL_PATH_SVHN
             self.targetModelPath = cfg.TARGET_MODEL_PATH_SVHN
+            self.classifierPath = cfg.CLASSIFIER_MODEL_PATH_SVHN
 
         self.dataset_name = dataset
 
