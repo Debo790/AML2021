@@ -88,10 +88,10 @@ class Phase2Solver:
             decay_steps=250,
             decay_rate=0.96,
             staircase=True)
-        # Defining the Discriminator optimizer
+        # Defining the Discriminator optimizer (different options available)
         # disc_optimizer = tf.keras.optimizers.Adam(learning_rate=disc_lr_schedule)
-        # disc_optimizer = tf.keras.optimizers.Adam(0.000001)
-        disc_optimizer = tf.keras.optimizers.Adam(self.initial_learning_rate)
+        disc_optimizer = tf.keras.optimizers.Adam(0.000001)
+        #disc_optimizer = tf.keras.optimizers.Adam(self.initial_learning_rate)
 
         tgt_lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             self.initial_learning_rate,
@@ -167,6 +167,9 @@ class Phase2Solver:
             # confident prediction; the resultant dtype = int64
             disc_eq = tf.equal(concat_labels, tf.argmax(disc_preds, -1))
             disc_accuracy = tf.reduce_mean(tf.cast(disc_eq, tf.float32)) * 100
+
+            # disc_loss = 1.111
+            # disc_accuracy = 1.111
 
             """
             Target encoder
@@ -248,6 +251,8 @@ class Phase2Solver:
                 if global_step % 50 == 0:
                     print('[{0}-{1:03}] batch_loss: {2:0.05}, batch_accuracy: {3:0.03}, tgt_loss: {4:0.05}, '
                           'src_cls_accuracy: {5:0.03}, tgt_cls_accuracy: {6:0.03}, concat_cls_accuracy: {7:0.03}'
+                        #   .format(e + 1, global_step, disc_loss, disc_accuracy, tgt_loss.numpy(),
+                        #           src_cls_accuracy.numpy(), tgt_cls_accuracy.numpy(), concat_cls_accuracy.numpy()))
                           .format(e + 1, global_step, disc_loss.numpy(), disc_accuracy.numpy(), tgt_loss.numpy(),
                                   src_cls_accuracy.numpy(), tgt_cls_accuracy.numpy(), concat_cls_accuracy.numpy()))
 
@@ -255,25 +260,27 @@ class Phase2Solver:
                           .format(sum(tgt_cls_accuracy_list) / len(tgt_cls_accuracy_list)))
                     print('src_cls_accuracy_mean: {0:0.03}'
                           .format(sum(src_cls_accuracy_list) / len(src_cls_accuracy_list)))
-
-                    # Extracting the learning rate value from the optimizers
-                    disc_lr = disc_optimizer._decayed_lr(tf.float32).numpy()
-                    tgt_lr = tgt_optimizer._decayed_lr(tf.float32).numpy()
-
-                    wandb.log(
-                        {'train/disc_loss': disc_loss,
-                         'train/disc_accuracy': disc_accuracy,
-                         'train/tgt_loss': tgt_loss,
-                         'train/disc_learning_rate': disc_lr,
-                         'train/tgt_learning_rate': tgt_lr,
-                         'train/src_cls_accuracy': src_cls_accuracy,
-                         'train/tgt_cls_accuracy': tgt_cls_accuracy,
-                         'train/concat_cls_accuracy': concat_cls_accuracy
-                         })
-
+                
                 if global_step == 1:
                     print('Number of Discriminator model parameters {}'.format(disc_model.count_params()))
                     print('Number of Target Encoder model parameters {}'.format(tgt_model.count_params()))
+
+            # Extracting the learning rate value from the optimizers
+            disc_lr = disc_optimizer._decayed_lr(tf.float32).numpy()
+            tgt_lr = tgt_optimizer._decayed_lr(tf.float32).numpy()
+
+            wandb.log(
+                {'train/disc_loss': disc_loss,
+                    'train/disc_accuracy': disc_accuracy,
+                    'train/tgt_loss': tgt_loss,
+                    'train/disc_learning_rate': disc_lr,
+                    'train/tgt_learning_rate': tgt_lr,
+                    'train/src_cls_accuracy': src_cls_accuracy,
+                    'train/tgt_cls_accuracy': tgt_cls_accuracy,
+                    'train/concat_cls_accuracy': concat_cls_accuracy
+                    })
+
+                
 
             # TODO.
             # Save the Discriminator and Target model at the end of each epoch

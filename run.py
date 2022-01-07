@@ -70,19 +70,22 @@ def main():
         os.environ['WANDB_MODE'] = 'online'
 
     # You need to edit settings/wandb_settings.py, specifying WANDB_ENTITY (username), WANDB_API_KEY
-    wandb.init(project='AML-ADDA', name='USPS -> MNIST: phase 1+2', group=args.mode, entity="aml2021")
     # wandb.init(project='AML-ADDA', name='Phase ' + args.phase, group=args.mode)
+    wandb.init(project='AML-ADDA', name='--test-- SVHN -> MNIST: phase 1+2 right cls', group=args.mode, entity="aml2021")
     wandb.config.epochs = args.e
     wandb.config.batch_size = args.bs
 
     # Specificy source datasets and target datasets for this run
-    source_ds = 'USPS'
+    source_ds = 'SVHN'
     target_ds = 'MNIST'
 
     # In the case you'd like to bypass the args parser:
-    app.phase1_training(epochs=20, batch_size=32, source=source_ds)
-    app.phase1_test(epochs=10, batch_size=32, source=source_ds)
+    app.phase1_training(epochs=15, batch_size=32, source=source_ds)
+    
+    app.phase1_test(batch_size=32, source=source_ds, target=target_ds)
+    
     app.phase2_adaptation(epochs=50, batch_size=32, source=source_ds, target=target_ds)
+
     # app.phase3_testing(epochs=10, batch_size=32, target=target_ds)
     # arch.show_model_arch('LeNetClassifier', plot=True)
     # data_test.test()
