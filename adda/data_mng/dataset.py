@@ -94,7 +94,7 @@ class Dataset:
 
         # The number of data points to add
         pad_size = size - len(self.data)
-        rnd_choice = np.random.choice(len(self.data), size=pad_size, replace=replace)
+        rnd_choice = np.random.choice(len(self.data), size=pad_size, replace=True)
 
         rnd_sample = self.data[rnd_choice]
         self.data = np.concatenate((self.data, rnd_sample))
@@ -102,7 +102,7 @@ class Dataset:
         rnd_sample = self.labels[rnd_choice]
         self.labels = np.concatenate((self.labels, rnd_sample))
 
-    def _pad_batch(self, data_batch, labels_batch, size, replace=False):
+    def _pad_batch(self, data_batch, labels_batch, size, replace=True):
         """
         Pad the batch (data and labels) with x random additional data points, reaching 'size'.
         """

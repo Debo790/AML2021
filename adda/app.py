@@ -6,7 +6,7 @@ from adda.solvers import Phase1Solver, Phase2Solver, Phase3Solver
 
 from adda.settings import config as cfg
 
-def phase1_training(batch_size, epochs, source):
+def phase1_training(batch_size, epochs, source, sample):
     """
     Phase 1: Pre-training.
     Training.
@@ -14,7 +14,7 @@ def phase1_training(batch_size, epochs, source):
     "We first pre-train a source encoder CNN using labeled source image examples." (Tzeng et al., 2017)
     """
     # Load the dataset. We're interested in the whole dataset.
-    training_ds = Dataset(source, 'training', sample=False, batch_size=batch_size)
+    training_ds = Dataset(source, 'training', sample=sample, batch_size=batch_size)
     test_ds = Dataset(source, 'test', sample=False, batch_size=batch_size)
 
     # Load and initialize the model (composed by: encoder + classifier)
@@ -27,7 +27,7 @@ def phase1_training(batch_size, epochs, source):
     solver.train(training_ds, test_ds, model)
 
 
-def phase1_test(batch_size, source, target):
+def phase1_test(batch_size, source, target, sample):
     """
     Phase 1: Pre-training.
     Test.
@@ -35,7 +35,7 @@ def phase1_test(batch_size, source, target):
     Testing the test dataset using the Phase1 saved model.
     """
     # Load the dataset. We're interested in the whole dataset.
-    train_ds = Dataset(source, 'training', sample=False, batch_size=batch_size)
+    train_ds = Dataset(source, 'training', sample=sample, batch_size=batch_size)
     test_ds = Dataset(target, 'test', sample=False, batch_size=batch_size)
     
     # Load the trained model
@@ -48,16 +48,22 @@ def phase1_test(batch_size, source, target):
     solver.test(test_ds, model)
 
 
-def phase2_adaptation(batch_size, epochs, source, target):
+def phase2_adaptation(batch_size, epochs, source, target, sample):
     """
     Phase 2: Adversarial Adaptation
 
     "Perform adversarial adaptation by learning a target encoder CNN such that a discriminator that sees encoded source and
     target examples cannot reliably predict their domain label." (Tzeng et al., 2017)
     """
+
+    # Using the whole dataset for SVHN as per Tzeng's paper
+
+    if source == 'SVHN':
+        sample = False
+    
     # Load the datasets
-    src_training_ds = Dataset(source, 'training', sample=True, batch_size=batch_size)
-    tgt_training_ds = Dataset(target, 'training', sample=True, batch_size=batch_size)
+    src_training_ds = Dataset(source, 'training', sample=sample, batch_size=batch_size)
+    tgt_training_ds = Dataset(target, 'training', sample=sample, batch_size=batch_size)
 
     # Deal with the fact that the datasets could be of different sizes, causing a not aligned batching.
     # Policy: always choose the bigger dataset as reference point, padding the smaller one.
