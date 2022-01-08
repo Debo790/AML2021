@@ -34,15 +34,27 @@ To perform a sample run, from the root of the project run the following command 
 python3 run.py
 ```
 
+The program will check automatically if a GPU is available for the task. If not, the CPU will be used to complete the adaptation.
+
 ### Credentials
 
 To store run results in a WandB instance, edit the template file stored in `adda/settings/wandb_settings.py.template` with the desired credentials, as well as the `run.py` file with the proper run names (and entities).
 
 ### Parameters
 
-TODO: parametrizziamo?
+Every run comes with a source and a target datasets, as long with a given amount of epochs each for training, adaptation and test set. Every parameter could be specified through command line parameters when running `run.py` file. Here is the list of the available ones:
 
-Every run comes with a source and a target datasets. They have to be specified in the `run.py` file, together with the desired number of epochs for each step.
+* `-source`: specify the source dataset (options: MNIST, USPS, SVHN); default: MNIST
+* `-target`: specify the target dataset (options: MNIST, USPS, SVHN); default: USPS
+* `-phase`: specify which step(s) you want to run (options: 1 (Pre-training), 2 (Adversarial Adaptation), 3 (Testing)); default: 1
+* `-e_tr`: specify the number of epochs for training step; default: 10
+* `-e_ad`: specify the number of epochs for adaptation step; default: 50
+* `-e_te`: specify the number of epochs for test step; default: 20
+* `-bs`: specify the batch size; default: 50
+* `-sample`: specify if you want to use a sample of the dataset (available only for MNIST and USPS); default: True
+* `-mode`: specify which mode you want the procedure to run with (Options: training, test); default: training
+* `-model_arch`: specify which architecture // TODO: complete
+* `-wandb`: specify if you want to log on a WandB instance; default: True
 
 ## Results
 
