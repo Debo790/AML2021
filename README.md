@@ -51,9 +51,10 @@ Every run comes with a source and a target datasets, as long with a given amount
 * `-e_ad`: specify the number of epochs for adaptation step; default: 50
 * `-e_te`: specify the number of epochs for test step; default: 20
 * `-bs`: specify the batch size; default: 50
-* `-sample`: specify if you want to use a sample of the dataset (available only for MNIST and USPS); default: True
-* `-mode`: specify which mode you want the procedure to run with (Options: training, test); default: training
-* `-model_arch`: specify which architecture // TODO: complete
+* `-sample_tr`: specify if you want to use a sample of the source dataset (available only for MNIST and USPS); default: False
+* `-sample_ad`: specify if you want to use a sample of the target dataset (available only for MNIST and USPS); default: True
+* `-sample_te`: specify if you want to use a sample of the dataset in the test phase (available only for MNIST and USPS); default: False
+* `-model_arch`: creates an image containing the architecture of the selected model (options: LeNetEncoder, LeNetClassifier, Discriminator, Phase1Model)
 * `-wandb`: specify if you want to log on a WandB instance; default: True
 
 ## Results

@@ -63,7 +63,6 @@ def main():
                                                                          '2 (Adversarial Adaptation), 3 (Testing)')
     parser.add_argument('-model_arch', type=str, default='LeNetEncoder', help='Options: LeNetEncoder, LeNetClassifier,'
                                                                               'Discriminator, Phase1Model')
-    parser.add_argument('-mode', type=str, default='training', help='Options: training, test')
     parser.add_argument('-sample_tr', type=bool, default=False, help='Using a sampled dataset during the Training '
                                                                      'phase; default: False')
     parser.add_argument('-sample_ad', type=bool, default=True, help='Using a sampled dataset during the Adaptation '
@@ -87,7 +86,7 @@ def main():
     
     input_phases = args.phase
 
-    if args.wandb == 'False' or args.mode in ['test']:
+    if args.wandb == 'False':
         # If you don't want your script to sync to the cloud
         # https://docs.wandb.ai/guides/track/advanced/environment-variables
         os.environ['WANDB_MODE'] = 'offline'
@@ -95,10 +94,10 @@ def main():
         os.environ['WANDB_MODE'] = 'online'
 
     # You need to edit settings/wandb_settings.py, specifying WANDB_ENTITY (username), WANDB_API_KEY
-    wandb.init(project='AML-ADDA', name='{} -> {}: phase {} * Ste test run'.format(source_ds, target_ds, input_phases),
-               group=args.mode, entity="aml2021")
+    wandb.init(project='AML-ADDA', name='{} -> {}: phase {} * night run'.format(source_ds, target_ds, input_phases),
+               entity="aml2021")
     # wandb.init(project='AML-ADDA', name='{} -> {}: phase {} complete'.format(source_ds, target_ds, input_phases),
-    #            group=args.mode, entity="aml2021")
+    #            entity="aml2021")
 
     # WanDB options
     wandb.config.epochs_training = args.e_tr
@@ -118,42 +117,41 @@ def main():
     epochs_tr = args.e_tr
     epochs_ad = args.e_ad
 
-    # Decomment the following lines in the case you'd like to bypass the args parser.
-    ##### START #####
-    sample_tr = False
-    epochs_tr = 10
-    source_ds = 'USPS'
-    epochs_ad = 50
-    target_ds = 'MNIST'
-    #
-    app.phase1_training(epochs=epochs_tr, batch_size=batch_size, source=source_ds, sample=sample_tr)
-    app.phase1_test(batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_te)
-    app.phase2_adaptation(epochs=epochs_ad, batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_ad)
-    app.phase3_testing(batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_te)
-    ##### END #####
+    # # Decomment the following lines in the case you'd like to bypass the args parser.
+    # ##### START #####
+    # sample_tr = False
+    # epochs_tr = 10
+    # source_ds = 'USPS'
+    # epochs_ad = 50
+    # target_ds = 'MNIST'
+    # #
+    # app.phase1_training(epochs=epochs_tr, batch_size=batch_size, source=source_ds, sample=sample_tr)
+    # app.phase1_test(batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_te)
+    # app.phase2_adaptation(epochs=epochs_ad, batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_ad)
+    # app.phase3_testing(batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_te)
+    # ##### END #####
+
 
     if args.model_arch:
         # This option simply produces an image with the selected network architecture
         arch.show_model_arch(args.model_arch, plot=False)
-        exit()
+        #exit()
+
 
     for phase in input_phases:
 
         # Phase 1: Pre-training.
-        if phase == 1:
-            if args.mode == 'training':
-                app.phase1_training(epochs=epochs_tr, batch_size=batch_size, sample=sample_tr)
-            elif args.mode == 'test':
-                if args.i is None:
-                    app.phase1_test()
+        if phase == '1':
+            app.phase1_training(epochs=epochs_tr, batch_size=batch_size, source=source_ds, sample=sample_tr)
+            app.phase1_test(batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_te)
                 
         # Phase 2: Adversarial Adaptation
-        elif phase == 2:
-            app.phase2_adaptation(epochs=epochs_ad, batch_size=batch_size, sample=sample_ad)
+        elif phase == '2':
+            app.phase2_adaptation(epochs=epochs_ad, batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_ad)
 
         # Phase 3: Testing
-        elif phase == 3:
-            app.phase3_testing(batch_size=batch_size, sample=sample_te)
+        elif phase == '3':
+            app.phase3_testing(batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_te)
     
 
 if __name__ == '__main__':
