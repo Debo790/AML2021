@@ -2,7 +2,6 @@ import tensorflow as tf
 import wandb
 
 from adda.data_mng import Dataset
-from adda.settings import config
 
 
 class Phase1Solver:
@@ -21,18 +20,18 @@ class Phase1Solver:
         """
         1. batch_size:
             A batch size of 32 means that 32 samples from the training dataset will be used to estimate the error
-            gradient before the model weights are updated.
+            before the model weights are updated.
 
         2. epochs:
             One training epoch means that the learning algorithm has made one pass through the training dataset,
-            where examples were separated into randomly selected “batch size” groups.
+            where examples were separated into randomly selected "batch size" groups.
 
         3. ilr (initial learning rate):
             The learning rate is a hyperparameter that controls how much to change the model in response to the
-            estimated error each time the model weights are updated.
+            estimated error, each time the model weights are updated.
             Choosing the learning rate is challenging as a value too small may result in a long training process
             that could get stuck, whereas a value too large may result in learning a sub-optimal set of weights
-            too fast or an unstable training process.
+            too fast, or an unstable training process.
         """
         self.epochs = epochs
         self.batch_size = batch_size
@@ -158,16 +157,14 @@ class Phase1Solver:
             if test_accuracy > best_accuracy:
                 best_accuracy = test_accuracy
                 # Persistently save both models (LeNetEncoder and LeNetClassifier)
-                #model.layers[0].save(config.SOURCE_MODEL_PATH)
-                #model.layers[1].save(config.CLASSIFIER_MODEL_PATH)
                 model.layers[0].save(training_ds.sourceModelPath)
                 model.layers[1].save(training_ds.classifierPath)
                 # Save the whole model, too
-                #model.save(config.PHASE1_MODEL_PATH)
                 model.save(training_ds.phase1ModelPath)
 
             print('End of Epoch {0}/{1:03} -> loss: {2:0.05}, test accuracy: {3:0.03} - best accuracy: {4:0.03}'
                   .format(e + 1, self.epochs, loss.numpy(), test_accuracy.numpy(), best_accuracy))
+            print('')
 
             wandb.log({
                 'test/loss': loss,
@@ -211,6 +208,7 @@ class Phase1Solver:
         # Calculate the percentage of successfully predicted labels.
         test_accuracy = tf.reduce_mean(tf.cast(eq, tf.float32)) * 100
 
+        print('=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+')
         print('Loss: {0:0.05}, test accuracy: {1:0.03}'
               .format(loss.numpy(), test_accuracy.numpy()))
 

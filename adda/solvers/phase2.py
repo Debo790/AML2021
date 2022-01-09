@@ -1,10 +1,7 @@
 import tensorflow as tf
-import random
-import numpy as np
 import wandb
 
 from adda.data_mng import Dataset
-from adda.settings import config
 
 
 class Phase2Solver:
@@ -24,8 +21,8 @@ class Phase2Solver:
 
         """
         From TensorFlow documentation:
-        "Use this crossentropy loss function when there are two or more label classes. We expect labels to be provided
-        in a one_hot representation."
+        Use crossentropy loss function when there are two or more label classes. We expect labels to be provided as
+        integers. If you want to provide labels using one-hot representation, please use CategoricalCrossentropy loss.
         Reference: https://www.tensorflow.org/api_docs/python/tf/keras/losses/CategoricalCrossentropy
 
         The aim is to compute the crossentropy loss between labels and predictions (logits).
@@ -34,7 +31,6 @@ class Phase2Solver:
         always be 0.0. Therefore, a cross-entropy of 0.0 when training a model indicates that the predicted class
         probabilities are identical to the probabilities in the training dataset, e.g. zero loss.
         """
-        # supervised_loss = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
         supervised_loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
         def get_disc_loss(data_labels, pred_labels):
@@ -47,11 +43,13 @@ class Phase2Solver:
             """
             return supervised_loss(data_labels, pred_labels)
 
+            # Some attempts borrowed from different implementations
             # https://www.tensorflow.org/api_docs/python/tf/nn/softmax_cross_entropy_with_logits
             # return tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(data_labels, pred_labels))
 
             # https://github.com/byeongjokim/ADDA
-            # return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=pred_labels, labels=tf.ones_like(pred_labels)))
+            # return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=pred_labels,
+            #                                                               labels=tf.ones_like(pred_labels)))
 
         def get_tgt_encoder_loss(data_labels, pred_labels):
             """
@@ -73,11 +71,13 @@ class Phase2Solver:
             """
             return supervised_loss(1 - data_labels, pred_labels)
 
+            # Some attempts borrowed from different implementations
             # https://www.tensorflow.org/api_docs/python/tf/nn/softmax_cross_entropy_with_logits
             # return tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(1 - data_labels, pred_labels))
 
             # https://github.com/byeongjokim/ADDA
-            # return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=pred_labels, labels=tf.zeros_like(pred_labels)))
+            # return tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=pred_labels,
+            #                                                               labels=tf.zeros_like(pred_labels)))
 
         """
         When training a model, it is often useful to lower the learning rate as the training progresses.
@@ -89,9 +89,17 @@ class Phase2Solver:
             decay_rate=0.96,
             staircase=True)
         # Defining the Discriminator optimizer (different options available)
+
+        # Option 1.
         # disc_optimizer = tf.keras.optimizers.Adam(learning_rate=disc_lr_schedule)
+
+        # Option 2.
+        # disc_optimizer = tf.keras.optimizers.Adam(self.initial_learning_rate)
+
+        # Option 3.
+        # After a series of empirical tests, we have observed that a learning rate equal to 1x10^-6 gives better
+        # performance
         disc_optimizer = tf.keras.optimizers.Adam(0.000001)
-        #disc_optimizer = tf.keras.optimizers.Adam(self.initial_learning_rate)
 
         tgt_lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             self.initial_learning_rate,
@@ -99,7 +107,12 @@ class Phase2Solver:
             decay_rate=0.96,
             staircase=True)
         # Defining the Target optimizer
+
+        # Option 1.
         # tgt_optimizer = tf.keras.optimizers.Adam(learning_rate=tgt_lr_schedule)
+
+        # Option 2.
+        # Also in this case we prefer to use a fixed learning rate equal to 1x10^-4
         tgt_optimizer = tf.keras.optimizers.Adam(self.initial_learning_rate)
 
         @tf.function
@@ -133,9 +146,9 @@ class Phase2Solver:
             tgt_labels = tf.ones(len(tgt_features), tf.int64)
             concat_labels = tf.concat([src_labels, tgt_labels], 0)
 
-            """
-            Discriminator
-            """
+            #################
+            # Discriminator #
+            #################
 
             """
             To differentiate automatically, TensorFlow needs to remember what operations happen in what order during
@@ -168,12 +181,9 @@ class Phase2Solver:
             disc_eq = tf.equal(concat_labels, tf.argmax(disc_preds, -1))
             disc_accuracy = tf.reduce_mean(tf.cast(disc_eq, tf.float32)) * 100
 
-            # disc_loss = 1.111
-            # disc_accuracy = 1.111
-
-            """
-            Target encoder
-            """
+            ##################
+            # Target encoder #
+            ##################
 
             with tf.GradientTape() as tgt_tape:
                 # Fitting the Target encoder to the target data points only
@@ -195,10 +205,17 @@ class Phase2Solver:
             # Optimization / weights update: apply the gradients to the trainable variables (weights)
             tgt_optimizer.apply_gradients(zip(tgt_gradients, tgt_trainable_vars))
 
+            disc_eq = tf.equal(tgt_labels, tf.argmax(disc_preds, -1))
+            tgt_accuracy = tf.reduce_mean(tf.cast(disc_eq, tf.float32)) * 100
+
             """
             Classifier performance evaluation: simply, the percentage of successfully predicted labels.
             argmax returns the index with the largest value across axes of a tensor (namely: the most confident 
             class prediction).
+            We are bringing into phase 2 what should take place during phase 3. However, we need to observe the 
+            adaptation phase by detecting the performance of the target encoder on the classifier.
+
+            The ongoing values are calculated on every batch.
 
             Remember that cls_preds == logits
             """
@@ -215,11 +232,20 @@ class Phase2Solver:
             cls_eq = tf.equal(orig_concat_labels, tf.argmax(cls_preds, -1))
             concat_cls_accuracy = tf.reduce_mean(tf.cast(cls_eq, tf.float32)) * 100
 
-            return disc_loss, disc_accuracy, tgt_loss, src_cls_accuracy, tgt_cls_accuracy, concat_cls_accuracy
+            return disc_loss, disc_accuracy, tgt_loss, tgt_accuracy, src_cls_accuracy, tgt_cls_accuracy, \
+                   concat_cls_accuracy
 
         global_step = 0
-        tgt_cls_accuracy_list = []
-        src_cls_accuracy_list = []
+
+        disc_accuracy_total_list = []
+        tgt_accuracy_total_list = []
+        tgt_cls_accuracy_total_list = []
+        src_cls_accuracy_total_list = []
+        concat_cls_accuracy_total_list = []
+        # Keep trace of Discriminator worst performance
+        disc_accuracy_epoch_worst_mean = 101
+        # Keep trace of Target encoder best performance
+        tgt_accuracy_epoch_best_mean = 0
 
         # External for loop: one iteration for each epoch.
         for e in range(self.epochs):
@@ -232,6 +258,14 @@ class Phase2Solver:
             src_training_ds.shuffle()
             tgt_training_ds.shuffle()
 
+            # In these lists we record the ongoing accuracy for every batch in a single epoch
+            disc_accuracy_epoch_list = []
+            tgt_accuracy_epoch_list = []
+            tgt_cls_accuracy_epoch_list = []
+            src_cls_accuracy_epoch_list = []
+            concat_cls_accuracy_epoch_list = []
+
+            # Internal loop: one interation for each available batch
             while src_training_ds.is_batch_available() and tgt_training_ds.is_batch_available():
                 # Get a data batch (data and labels) composed by batch_size data points
                 src_data_b, src_labels_b = src_training_ds.get_batch()
@@ -241,26 +275,62 @@ class Phase2Solver:
                 global_step += 1
 
                 # Invoke the inner function train_step()
-                disc_loss, disc_accuracy, tgt_loss, src_cls_accuracy, tgt_cls_accuracy, concat_cls_accuracy = \
-                    train_step(src_data_b, tgt_data_b, src_labels_b, tgt_labels_b)
+                disc_loss, disc_accuracy, tgt_loss, tgt_accuracy, src_cls_accuracy, tgt_cls_accuracy, \
+                concat_cls_accuracy = train_step(src_data_b, tgt_data_b, src_labels_b, tgt_labels_b)
 
-                tgt_cls_accuracy_list.append(tgt_cls_accuracy.numpy())
-                src_cls_accuracy_list.append(src_cls_accuracy.numpy())
+                # We keep trace of the performance calculating the following values at the end of each processed batch.
+                disc_accuracy_epoch_list.append(disc_accuracy.numpy())
+                tgt_accuracy_epoch_list.append(tgt_accuracy.numpy())
+                tgt_cls_accuracy_epoch_list.append(tgt_cls_accuracy.numpy())
+                src_cls_accuracy_epoch_list.append(src_cls_accuracy.numpy())
+                concat_cls_accuracy_epoch_list.append(concat_cls_accuracy.numpy())
+
+                disc_accuracy_total_list.append(disc_accuracy.numpy())
+                tgt_accuracy_total_list.append(tgt_accuracy.numpy())
+                tgt_cls_accuracy_total_list.append(tgt_cls_accuracy.numpy())
+                src_cls_accuracy_total_list.append(src_cls_accuracy.numpy())
+                concat_cls_accuracy_total_list.append(concat_cls_accuracy.numpy())
+
+                disc_accuracy_epoch_mean = sum(disc_accuracy_epoch_list) / len(disc_accuracy_epoch_list)
+                tgt_accuracy_epoch_mean = sum(tgt_accuracy_epoch_list) / len(tgt_accuracy_epoch_list)
+                src_cls_accuracy_epoch_mean = sum(src_cls_accuracy_epoch_list) / len(src_cls_accuracy_epoch_list)
+                tgt_cls_accuracy_epoch_mean = sum(tgt_cls_accuracy_epoch_list) / len(tgt_cls_accuracy_epoch_list)
+                concat_cls_accuracy_epoch_mean = sum(concat_cls_accuracy_epoch_list) / \
+                                                 len(concat_cls_accuracy_epoch_list)
+
+                disc_accuracy_total_mean = sum(disc_accuracy_total_list) / len(disc_accuracy_total_list)
+                tgt_accuracy_total_mean = sum(tgt_accuracy_total_list) / len(tgt_accuracy_total_list)
+                src_cls_accuracy_total_mean = sum(src_cls_accuracy_total_list) / \
+                                                 len(src_cls_accuracy_total_list)
+                tgt_cls_accuracy_total_mean = sum(tgt_cls_accuracy_total_list) / \
+                                                 len(tgt_cls_accuracy_total_list)
+                concat_cls_accuracy_total_mean = sum(concat_cls_accuracy_total_list) / \
+                                                    len(concat_cls_accuracy_total_list)
 
                 # Ongoing accuracy is shown every 50 processed batches
                 if global_step % 50 == 0:
-                    print('[{0}-{1:03}] batch_loss: {2:0.05}, batch_accuracy: {3:0.03}, tgt_loss: {4:0.05}, '
-                          'src_cls_accuracy: {5:0.03}, tgt_cls_accuracy: {6:0.03}, concat_cls_accuracy: {7:0.03}'
-                        #   .format(e + 1, global_step, disc_loss, disc_accuracy, tgt_loss.numpy(),
-                        #           src_cls_accuracy.numpy(), tgt_cls_accuracy.numpy(), concat_cls_accuracy.numpy()))
+                    print('')
+                    print('=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+='
+                          '+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+')
+                    print('[{0}-{1:03}] disc_loss: {2:0.05}, disc_accuracy: {3:0.03}, tgt_loss: {4:0.03}, '
+                          'tgt_accuracy: {5:0.05}, src_cls_accuracy: {6:0.03}, tgt_cls_accuracy: {7:0.03}, '
+                          'concat_cls_accuracy: {8:0.03}'
                           .format(e + 1, global_step, disc_loss.numpy(), disc_accuracy.numpy(), tgt_loss.numpy(),
-                                  src_cls_accuracy.numpy(), tgt_cls_accuracy.numpy(), concat_cls_accuracy.numpy()))
+                                  tgt_accuracy.numpy(), src_cls_accuracy.numpy(), tgt_cls_accuracy.numpy(),
+                                  concat_cls_accuracy.numpy()))
+                    print('')
+                    print('disc_accuracy_epoch_mean: {0:0.03}'.format(disc_accuracy_epoch_mean))
+                    print('tgt_accuracy_epoch_mean: {0:0.03}'.format(tgt_accuracy_epoch_mean))
+                    print('src_cls_accuracy_epoch_mean: {0:0.03}'.format(src_cls_accuracy_epoch_mean))
+                    print('tgt_cls_accuracy_epoch_mean: {0:0.03}'.format(tgt_cls_accuracy_epoch_mean))
+                    print('concat_cls_accuracy_epoch_mean: {0:0.03}'.format(concat_cls_accuracy_epoch_mean))
+                    print('')
+                    print('disc_accuracy_total_mean: {0:0.03}'.format(disc_accuracy_total_mean))
+                    print('tgt_accuracy_total_mean: {0:0.03}'.format(tgt_accuracy_total_mean))
+                    print('src_cls_accuracy_total_mean: {0:0.03}'.format(src_cls_accuracy_total_mean))
+                    print('tgt_cls_accuracy_total_mean: {0:0.03}'.format(tgt_cls_accuracy_total_mean))
+                    print('concat_cls_accuracy_total_mean: {0:0.03}'.format(concat_cls_accuracy_total_mean))
 
-                    print('tgt_cls_accuracy_mean: {0:0.03}'
-                          .format(sum(tgt_cls_accuracy_list) / len(tgt_cls_accuracy_list)))
-                    print('src_cls_accuracy_mean: {0:0.03}'
-                          .format(sum(src_cls_accuracy_list) / len(src_cls_accuracy_list)))
-                
                 if global_step == 1:
                     print('Number of Discriminator model parameters {}'.format(disc_model.count_params()))
                     print('Number of Target Encoder model parameters {}'.format(tgt_model.count_params()))
@@ -269,33 +339,34 @@ class Phase2Solver:
             disc_lr = disc_optimizer._decayed_lr(tf.float32).numpy()
             tgt_lr = tgt_optimizer._decayed_lr(tf.float32).numpy()
 
-            wandb.log(
-                {'train/disc_loss': disc_loss,
-                    'train/disc_accuracy': disc_accuracy,
-                    'train/tgt_loss': tgt_loss,
-                    'train/disc_learning_rate': disc_lr,
-                    'train/tgt_learning_rate': tgt_lr,
-                    'train/src_cls_accuracy': src_cls_accuracy,
-                    'train/tgt_cls_accuracy': tgt_cls_accuracy,
-                    'train/concat_cls_accuracy': concat_cls_accuracy
-                    })
-
-                
-
-            # TODO.
-            # Save the Discriminator and Target model at the end of each epoch
-            # Should we evaluate/test, in some way, the Discriminator?
-            # disc_model.save(config.DISCRIMINATOR_MODEL_PATH, save_format='tf')
-            # tgt_model.save(config.TARGET_MODEL_PATH, save_format='tf')
-
-            """
-            TODO.
-            print('End of Epoch {0}/{1:03} -> loss: {2:0.05}, test accuracy: {3:0.03} - best accuracy: {4:0.03}'
-                  .format(e + 1, self.epochs, batch_loss.numpy(), batch_accuracy.numpy(), best_accuracy))
-
+            # Here we're going to push to WanDB the learning ongoing results every epoch
             wandb.log({
-                'test/loss': batch_loss,
-                'test/accuracy': batch_accuracy,
-                'epoch': e + 1
+                'train/disc_loss': disc_loss,
+                'train/disc_accuracy': disc_accuracy,
+                'train/tgt_loss': tgt_loss,
+                'train/tgt_accuracy': tgt_accuracy,
+                'train/disc_learning_rate': disc_lr,
+                'train/tgt_learning_rate': tgt_lr,
+
+                'train/disc_accuracy_epoch_mean': disc_accuracy_epoch_mean,
+                'train/tgt_accuracy_epoch_mean': tgt_accuracy_epoch_mean,
+                'train/src_cls_accuracy_epoch_mean': src_cls_accuracy_epoch_mean,
+                'train/tgt_cls_accuracy_epoch_mean': tgt_cls_accuracy_epoch_mean,
+                'train/concat_cls_accuracy_epoch_mean': concat_cls_accuracy_epoch_mean,
+
+                'train/disc_accuracy_total_mean': disc_accuracy_total_mean,
+                'train/tgt_accuracy_total_mean': tgt_accuracy_total_mean,
+                'train/src_cls_accuracy_total_mean': src_cls_accuracy_total_mean,
+                'train/tgt_cls_accuracy_total_mean': tgt_cls_accuracy_total_mean,
+                'train/concat_cls_accuracy_total_mean': concat_cls_accuracy_total_mean,
             })
-            """
+
+            # Save the Target model if the results are better than the previous
+            if disc_accuracy_epoch_mean < disc_accuracy_epoch_worst_mean:
+                disc_accuracy_epoch_worst_mean = disc_accuracy_epoch_mean
+                # Save the Target model
+                tgt_model.save(tgt_training_ds.targetModelPath, save_format='tf')
+
+        print('=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+='
+              '+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+')
+        print('')

@@ -6,6 +6,7 @@ from adda.solvers import Phase1Solver, Phase2Solver, Phase3Solver
 
 from adda.settings import config as cfg
 
+
 def phase1_training(batch_size, epochs, source, sample):
     """
     Phase 1: Pre-training.
@@ -15,7 +16,7 @@ def phase1_training(batch_size, epochs, source, sample):
     """
     # Load the dataset. We're interested in the whole dataset.
     training_ds = Dataset(source, 'training', sample=sample, batch_size=batch_size)
-    test_ds = Dataset(source, 'test', sample=False, batch_size=batch_size)
+    test_ds = Dataset(source, 'test', sample=sample, batch_size=batch_size)
 
     # Load and initialize the model (composed by: encoder + classifier)
     model = Phase1Model(training_ds.get_input_shape(), training_ds.get_num_classes())
@@ -34,18 +35,24 @@ def phase1_test(batch_size, source, target, sample):
 
     Testing the test dataset using the Phase1 saved model.
     """
-    # Load the dataset. We're interested in the whole dataset.
-    train_ds = Dataset(source, 'training', sample=sample, batch_size=batch_size)
-    test_ds = Dataset(target, 'test', sample=False, batch_size=batch_size)
-    
+
+    # In order to calculate the accuracy "Source only", as reported in the Tzeng et al.'s paper, it is necessary to use
+    # the target test set on the source model trained during the previous training phase 1.
+    # E.g.: use the USPS test set on the pair model encoder+classifier trained on MNIST.
+
+    # Load the dataset and, contextually, the source model
+    src_train_ds = Dataset(source, 'training', sample=sample, batch_size=batch_size)
+    # Load the test dataset
+    src_test_ds = Dataset(target, 'test', sample=sample, batch_size=batch_size)
+
     # Load the trained model
-    model = keras.models.load_model(train_ds.phase1ModelPath, compile=False)
-    
+    model = keras.models.load_model(src_train_ds.phase1ModelPath, compile=False)
+
     # Instantiate the solver
     solver = Phase1Solver(batch_size)
 
-    # Run the test
-    solver.test(test_ds, model)
+    # Run the test using the test dataset on the source model
+    solver.test(src_test_ds, model)
 
 
 def phase2_adaptation(batch_size, epochs, source, target, sample):
@@ -56,11 +63,10 @@ def phase2_adaptation(batch_size, epochs, source, target, sample):
     target examples cannot reliably predict their domain label." (Tzeng et al., 2017)
     """
 
-    # Using the whole dataset for SVHN as per Tzeng's paper
-
+    # Hard-coded constraint: using the whole dataset for SVHN as per Tzeng's paper
     if source == 'SVHN':
         sample = False
-    
+
     # Load the datasets
     src_training_ds = Dataset(source, 'training', sample=sample, batch_size=batch_size)
     tgt_training_ds = Dataset(target, 'training', sample=sample, batch_size=batch_size)
@@ -75,7 +81,6 @@ def phase2_adaptation(batch_size, epochs, source, target, sample):
     elif tgt_size > src_size:
         src_training_ds.pad_dataset(tgt_size)
 
-
     src_model = keras.models.load_model(src_training_ds.sourceModelPath, compile=False)
     """
     As we can read in Tzeng. et al's paper:
@@ -83,9 +88,12 @@ def phase2_adaptation(batch_size, epochs, source, target, sample):
     fix the source (typo: target?) model during adversarial training.
     """
     tgt_model = keras.models.load_model(src_training_ds.sourceModelPath, compile=False)
+    # In the case we'd like to use a non-initialized encoder, instead of the source one
     # tgt_model = LeNetEncoder(data_usps.input_shape)
 
+    # Discriminator
     disc_model = Discriminator()
+    # Classifier (trained on the source dataset)
     cls_model = keras.models.load_model(src_training_ds.classifierPath, compile=False)
 
     # Instantiate the solver
@@ -95,7 +103,7 @@ def phase2_adaptation(batch_size, epochs, source, target, sample):
     solver.train(src_training_ds, tgt_training_ds, src_model, tgt_model, disc_model, cls_model)
 
 
-def phase3_testing(batch_size, epochs, target):
+def phase3_testing(batch_size, source, target, sample):
     """
     Phase 3: Testing
 
@@ -103,16 +111,17 @@ def phase3_testing(batch_size, epochs, target):
     source classifier." (Tzeng et al., 2017)
     """
 
-    # Load the dataset
-    tgt_training_ds = Dataset(target, 'training', sample=True, batch_size=batch_size)
+    # Load the datasets
+    src_training_ds = Dataset(source, 'training', sample=sample, batch_size=batch_size)
+    tgt_test_ds = Dataset(target, 'training', sample=sample, batch_size=batch_size)
 
-    # Load the Classifier model, trained during phase 1
-    cls_model = keras.models.load_model(cfg.CLASSIFIER_MODEL_PATH)
+    # Load the Classifier model, trained during phase 1 on the source dataset
+    cls_model = keras.models.load_model(src_training_ds.classifierPath, compile=False)
     # Load the Target encoder, trained during phase 2
-    tgt_model = keras.models.load_model(cfg.CLASSIFIER_MODEL_PATH)
+    tgt_model = keras.models.load_model(tgt_test_ds.targetModelPath, compile=False)
 
     # Instantiate the solver
-    solver = Phase3Solver(batch_size, epochs)
+    solver = Phase3Solver(batch_size)
 
     # Run the test
-    solver.test(tgt_training_ds, cls_model, tgt_model)
+    solver.test(tgt_test_ds, cls_model, tgt_model)

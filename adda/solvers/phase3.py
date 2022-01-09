@@ -1,6 +1,7 @@
 import tensorflow as tf
 import wandb
-from adda.settings import config
+
+from adda.data_mng import Dataset
 
 
 class Phase3Solver:
@@ -10,57 +11,51 @@ class Phase3Solver:
     source classifier." (Tzeng et al., 2017)
     """
 
-    def __init__(self, batch_size, epochs, ilr=0.0001):
-        self.epochs = epochs
+    def __init__(self, batch_size):
         self.batch_size = batch_size
-        self.initial_learning_rate = ilr
 
-    def test(self, test_data, test_labels, cls_model, tgt_model):
-        """
-        Cross-entropy loss measures the performance of a classification model whose output is a probability value
-        between 0 and 1.
-
-        from_logits parameter: "whether y_pred is expected to be a logits tensor. By default, we assume that y_pred
-        encodes a probability distribution." (from TensorFlow documentation).
-
-        The final layer in our NN produces (also) logits, namely raw prediction values (un-normalized log
-        probabilities).
-        SparseCategoricalcrossEntropy(from_logits=True) expects the logits that has not been normalized by the Softmax
-        activation function.
-        """
+    def test(self, test_ds: Dataset, cls_model, tgt_model):
         loss_function = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-        # @tf.function
+        # Single test step: use the model in inference mode to generate predictions on unseen test data
+        @tf.function
         def test_step(data, labels):
+            # Get the target features using the target model trained during phase 2
             tgt_features = tgt_model(data, training=False)
+            # Pass the target features to the classifier trained during phase 1 on the source dataset
             logits, preds = cls_model(tgt_features, training=False)
+
             loss = loss_function(y_true=labels, y_pred=logits)
             return loss, logits, preds
 
         # Initialize global containers to store the batch-by-batch results
-        test_preds = tf.zeros((0,), dtype=tf.int64)
+        whole_preds = tf.zeros((0,), dtype=tf.int64)
         total_loss = list()
 
-        # Forward pass using the whole test dataset, batch by batch
-        for i in range(0, len(test_labels), self.batch_size):
-            # Slicing the data and the labels
-            data = test_data[i:i + self.batch_size, :]
-            labels = test_labels[i:i + self.batch_size, ].astype('int64')
+        # Reset the iterator position
+        test_ds.reset_pos()
 
-            batch_loss, _, preds = test_step(data, labels)
+        # Forward pass using the whole test dataset, batch by batch
+        while test_ds.is_batch_available():
+            # Get a data batch (data and labels) composed by batch_size data points
+            data_b, labels_b = test_ds.get_batch(padding=False)
+            # Invoke the inner function test_step()
+            batch_loss, _, preds = test_step(data_b, labels_b)
 
             # Extract the most confident class prediction (highest probability)
             batch_preds = tf.argmax(preds, -1)
-            test_preds = tf.concat([test_preds, batch_preds], axis=0)
+            whole_preds = tf.concat([whole_preds, batch_preds], axis=0)
             total_loss.append(batch_loss)
 
         loss = sum(total_loss) / len(total_loss)
         # Calculate the number of correctly predicted labels, aggregating the whole batches
-        eq = tf.equal(test_labels, test_preds)
-        # Calculate the the percentage of successfully predicted labels.
+        eq = tf.equal(test_ds.labels, whole_preds)
+        # Calculate the percentage of successfully predicted labels.
         test_accuracy = tf.reduce_mean(tf.cast(eq, tf.float32)) * 100
 
+        print('=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+')
         print('Loss: {0:0.05}, test accuracy: {1:0.03}'
               .format(loss.numpy(), test_accuracy.numpy()))
+        print('')
 
-        return loss, test_accuracy, test_preds
+        return loss, test_accuracy, whole_preds
