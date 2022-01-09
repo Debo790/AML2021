@@ -38,7 +38,8 @@ class Dataset:
 
         elif dataset == 'SVHN':
             from .svhn import SVHN
-            self.data_obj = SVHN(sample=True, sample_size=sample_size, normalize=True, resize28=True, download=False)
+            #madonna puttana il sample va False dc
+            self.data_obj = SVHN(sample=False, sample_size=sample_size, normalize=True, resize28=True, download=False)
             self.sourceModelPath = cfg.SOURCE_MODEL_PATH_SVHN
             self.phase1ModelPath = cfg.PHASE1_MODEL_PATH_SVHN
             self.targetModelPath = cfg.TARGET_MODEL_PATH_SVHN
