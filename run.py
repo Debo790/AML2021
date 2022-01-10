@@ -16,6 +16,7 @@ import cpuinfo
 import tensorflow as tf
 import adda.models.arch as arch
 import adda.app as app
+import adda.settings.wandb_settings
 
 
 def gpu_check():
