@@ -246,6 +246,8 @@ class Phase2Solver:
         disc_accuracy_epoch_worst_mean = 101
         # Keep trace of Target encoder best performance
         tgt_accuracy_epoch_best_mean = 0
+        # Keep trace of the Classificator best performance (on target encoding)
+        tgt_cls_accuracy_epoch_best_mean = 0
 
         # External for loop: one iteration for each epoch.
         for e in range(self.epochs):
@@ -362,9 +364,15 @@ class Phase2Solver:
             })
 
             # Save the Target model if the results are better than the previous
+            """
             if disc_accuracy_epoch_mean < disc_accuracy_epoch_worst_mean:
                 disc_accuracy_epoch_worst_mean = disc_accuracy_epoch_mean
-                # Save the Target model
+                # Save the best Target model based on the worst discriminator performance
+                tgt_model.save(tgt_training_ds.targetModelPath, save_format='tf')
+            """
+            if tgt_cls_accuracy_epoch_mean > tgt_cls_accuracy_epoch_best_mean:
+                tgt_cls_accuracy_epoch_best_mean = tgt_cls_accuracy_epoch_mean
+                # Save the best Target model based on the best classification accuracy
                 tgt_model.save(tgt_training_ds.targetModelPath, save_format='tf')
 
         print('=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+='

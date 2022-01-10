@@ -43,7 +43,7 @@ def phase1_test(batch_size, source, target, sample):
     # Load the dataset and, contextually, the source model
     src_train_ds = Dataset(source, 'training', sample=sample, batch_size=batch_size)
     # Load the test dataset
-    src_test_ds = Dataset(target, 'test', sample=sample, batch_size=batch_size)
+    test_ds = Dataset(target, 'test', sample=sample, batch_size=batch_size)
 
     # Load the trained model
     model = keras.models.load_model(src_train_ds.phase1ModelPath, compile=False)
@@ -52,7 +52,7 @@ def phase1_test(batch_size, source, target, sample):
     solver = Phase1Solver(batch_size)
 
     # Run the test using the test dataset on the source model
-    solver.test(src_test_ds, model)
+    solver.test(test_ds, model)
 
 
 def phase2_adaptation(batch_size, epochs, source, target, sample):

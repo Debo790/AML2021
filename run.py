@@ -77,13 +77,13 @@ def main():
     parser.add_argument('-target', type=str, default='USPS', help='Options: MNIST, USPS, SVHN')
 
     args = parser.parse_args()
-    
-    # Specificy source datasets and target datasets for this run
+
+    # Specific source datasets and target datasets for this run
     source_ds = args.source
     target_ds = args.target
     input_check(source_ds, "source")
     input_check(target_ds, "target")
-    
+
     input_phases = args.phase
 
     if args.wandb == 'False':
@@ -94,7 +94,7 @@ def main():
         os.environ['WANDB_MODE'] = 'online'
 
     # You need to edit settings/wandb_settings.py, specifying WANDB_ENTITY (username), WANDB_API_KEY
-    wandb.init(project='AML-ADDA', name='{} -> {}: phase {} * night run'.format(source_ds, target_ds, input_phases),
+    wandb.init(project='AML-ADDA', name='{} -> {}: phase {} * Ste morning run'.format(source_ds, target_ds, input_phases),
                entity="aml2021")
     # wandb.init(project='AML-ADDA', name='{} -> {}: phase {} complete'.format(source_ds, target_ds, input_phases),
     #            entity="aml2021")
@@ -117,42 +117,49 @@ def main():
     epochs_tr = args.e_tr
     epochs_ad = args.e_ad
 
-    # # Decomment the following lines in the case you'd like to bypass the args parser.
-    # ##### START #####
-    # sample_tr = False
-    # epochs_tr = 10
-    # source_ds = 'USPS'
-    # epochs_ad = 50
-    # target_ds = 'MNIST'
-    # #
-    # app.phase1_training(epochs=epochs_tr, batch_size=batch_size, source=source_ds, sample=sample_tr)
-    # app.phase1_test(batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_te)
-    # app.phase2_adaptation(epochs=epochs_ad, batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_ad)
-    # app.phase3_testing(batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_te)
-    # ##### END #####
-
+    # Decomment the following lines in the case you'd like to bypass the args parser.
+    ##### START #####
+    """
+    sample_tr = False
+    epochs_tr = 10
+    source_ds = 'USPS'
+    epochs_ad = 50
+    target_ds = 'MNIST'
+    #
+    app.phase1_training(epochs=epochs_tr, batch_size=batch_size, source=source_ds, sample=sample_tr)
+    # Test accuracy on source test set
+    app.phase1_test(batch_size=batch_size, source=source_ds, target=source_ds, sample=sample_te)
+    # "Source only" accuracy (test accuracy on target test set)
+    app.phase1_test(batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_te)
+    app.phase2_adaptation(epochs=epochs_ad, batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_ad)
+    app.phase3_testing(batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_te)
+    exit()
+    """
+    ##### END #####
 
     if args.model_arch:
         # This option simply produces an image with the selected network architecture
         arch.show_model_arch(args.model_arch, plot=False)
-        #exit()
-
 
     for phase in input_phases:
 
         # Phase 1: Pre-training.
         if phase == '1':
             app.phase1_training(epochs=epochs_tr, batch_size=batch_size, source=source_ds, sample=sample_tr)
+            # Test accuracy on source test set, using the source encoder
+            app.phase1_test(batch_size=batch_size, source=source_ds, target=source_ds, sample=sample_te)
+            # "Source only" accuracy (test accuracy on target test set), using the source encoder
             app.phase1_test(batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_te)
-                
+
         # Phase 2: Adversarial Adaptation
         elif phase == '2':
-            app.phase2_adaptation(epochs=epochs_ad, batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_ad)
+            app.phase2_adaptation(epochs=epochs_ad, batch_size=batch_size, source=source_ds, target=target_ds,
+                                  sample=sample_ad)
 
         # Phase 3: Testing
         elif phase == '3':
             app.phase3_testing(batch_size=batch_size, source=source_ds, target=target_ds, sample=sample_te)
-    
+
 
 if __name__ == '__main__':
     main()
