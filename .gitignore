@@ -136,3 +136,4 @@ saved_models/
 .idea
 drawn_models/
 notebook.sh
+.gitattributes

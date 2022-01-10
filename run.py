@@ -14,8 +14,6 @@ import sys
 import wandb
 import cpuinfo
 import tensorflow as tf
-
-import adda.settings.wandb_settings
 import adda.models.arch as arch
 import adda.app as app
 
@@ -94,8 +92,8 @@ def main():
         os.environ['WANDB_MODE'] = 'online'
 
     # You need to edit settings/wandb_settings.py, specifying WANDB_ENTITY (username), WANDB_API_KEY
-    wandb.init(project='AML-ADDA', name='{} -> {}: phase {} * Ste morning run'.format(source_ds, target_ds, input_phases),
-               entity="aml2021")
+    wandb.init(project='AML-ADDA', name='{} -> {}: phase {} * morning run'.format(source_ds, target_ds, input_phases),
+               entity="aml2021", group="final")
     # wandb.init(project='AML-ADDA', name='{} -> {}: phase {} complete'.format(source_ds, target_ds, input_phases),
     #            entity="aml2021")
 
