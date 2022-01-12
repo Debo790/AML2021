@@ -4,9 +4,18 @@
 
 Implementation of Adversarial Discriminative Domain Adaptatio proposed by Eric Tzeng et al. in [Tzeng, Eric, et al. "Adversarial discriminative domain adaptation." Proceedings of the IEEE conference on computer vision and pattern recognition. 2017.](https://arxiv.org/abs/1702.05464)
 
+### Datasets and Git Large Files
+
+All datasets used in the project (MNIST, USPS, SVHN) come with cloning. However, given that SVHN dataset exceeds GitHub storage limits, you can either download the dataset on a local folder (in ```datasets/svhn```, ```.mat``` format required, url: http://ufldl.stanford.edu/housenumbers/) or, alternatively, install git-lfs on your machine. Steps:
++ ```$ curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash```
++ ```$ sudo apt-get install git-lfs```
++ ```$ git-lfs install```  
+
+And then clone the project. 
+
 ### Virtual environment setup and requirements
 
-In order to to execute the project, it is suggested to create a virtual environment and install the required modules.  
+In order to to execute the project after the cloning, it is suggested to create a virtual environment and install the required modules.  
 To create a virtual environment in a UNIX system, type in a terminal:
 
 ```
