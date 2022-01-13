@@ -2,7 +2,7 @@
 
 # UniTN Applied Machine Learning project 2020/2021
 
-Implementation of Adversarial Discriminative Domain Adaptatio proposed by Eric Tzeng et al. in [Tzeng, Eric, et al. "Adversarial discriminative domain adaptation." Proceedings of the IEEE conference on computer vision and pattern recognition. 2017.](https://arxiv.org/abs/1702.05464)
+Implementation of Adversarial Discriminative Domain Adaptation proposed by Eric Tzeng et al. in [Tzeng, Eric, et al. "Adversarial discriminative domain adaptation." Proceedings of the IEEE conference on computer vision and pattern recognition. 2017.](https://arxiv.org/abs/1702.05464)
 
 ### Datasets and Git Large Files
 
@@ -68,4 +68,7 @@ Every run comes with a source and a target datasets, as long with a given amount
 
 ## Results
 
-TODO.
+| Method | MNIST &rarr; USPS | USPS &rarr; MNIST | SVHN &rarr; MNIST |
+| :------: | :-------------: | :-------------: | :-------------: |
+| Source only | 7.52 | 49.80 | 53.00 |
+| ADDA | 13.80 | 50.70 | 53.00 |
